@@ -1,18 +1,17 @@
-import sys
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 from recourse import ActionSet
 
-sys.path.append("~/Desktop/recourse-dp-game-theory/recourse-game/")
 from algorec import BaseEnvironment, BasePopulation, ActionableRecourse
 
 rng = np.random.default_rng(42)
 df = pd.DataFrame(rng.random((100, 3)), columns=["a", "b", "c"])
-y = rng.integers(0,2,100)
+y = rng.integers(0, 2, 100)
 
 lr = LogisticRegression().fit(df.values, y)
+y_pred = lr.predict(df)
 
 # Testing a single counterfactual
 population = BasePopulation(
@@ -24,7 +23,7 @@ population = BasePopulation(
 act_set = ActionSet(X=df, y_desired=1)
 population.action_set(act_set)
 
-recourse_algo = ActionableRecourse(lr, flipset_size=100)
+recourse_algo = ActionableRecourse(lr, threshold=.65, flipset_size=100)
 cfs = recourse_algo.counterfactuals(population)
 
 
