@@ -19,12 +19,7 @@ class ActionableRecourse:
     """
 
     def __init__(
-        self,
-        model,
-        threshold=.5,
-        flipset_size=100,
-        discretize=False,
-        sample=False
+        self, model, threshold=0.5, flipset_size=100, discretize=False, sample=False
     ):
         self.model = model
         self.threshold = threshold
@@ -40,9 +35,7 @@ class ActionableRecourse:
         coefficients = self.model.coef_
 
         # Adjusting the intercept to match the desired threshold.
-        intercept = (
-            intercept - np.log(self.threshold / (1 - self.threshold))
-        )
+        intercept = intercept - np.log(self.threshold / (1 - self.threshold))
         model.intercept_ = intercept
 
         # NOTE: REMOVE THIS LINE - USED FOR TESTING PURPOSES
