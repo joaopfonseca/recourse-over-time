@@ -11,11 +11,18 @@ class BaseEnvironment(ABC):
     multi-agent analysis of algorithmic recourse.
 
     Some relevant parameters will include:
-    - [] Population
+    - [x] Population
     - [] Decision model
     - [] Threshold definition (which should accept fixed or dynamic thresholds)
         * Could be defined as a function?
-    - [] Agorithmic Recourse method
+    - [x] Agorithmic Recourse method
+    - [] Distribution of Agents' percentage of adaptation
+    - [] Define how this percentage changes over time:
+        * Increase rate: over time people get more motivated to move towards
+          counterfactual
+        * Decrease rate: over time people lose motivation to move towards
+          counterfactual until they eventually give up
+        * Mixed: Some people get more motivation, others lose it.
 
     Attributes:
     - Current step
@@ -70,34 +77,30 @@ class BasePopulation(ABC):
 
     A population consists of a set of Agents.
 
+    Actionable recourse supports only binary categorical features.
+
     List of features to implement:
     - [x] Agents' personal info (data)
     - [x] categorical features
     - [x] immutable features
     - [x] step direction
-    - [] Internalize the definition of the action set
-    - [] Distribution of Agents' percentage of adaptation
-    - [] Define how this percentage changes over time:
-        * Increase rate: over time people get more motivated to move towards
-          counterfactual
-        * Decrease rate: over time people lose motivation to move towards
-          counterfactual until they eventually give up
-        * Mixed: Some people get more motivation, others lose it.
+    - [x] Definition the action set internally
     - [] Amount of new Agents per update
     - [] Amount of Agents with an adverse outcome that give up (leave the
       Population)
     - [] Generator (for new agents)
     - [] Population objects should be iterable. Selecting one element should
          return an Agent.
+    - [] Allow entering data as numpy array (?)
     """
 
     def __init__(
         self,
-        data: Union[pd.DataFrame, np.ndarray],
+        data: pd.DataFrame,
         y_desired: Union[int, str] = 1,
-        categorical: Union[list, np.ndarray, dict] = None,
-        immutable: Union[list, np.ndarray, dict] = None,
-        step_direction: Union[list, np.ndarray, dict] = None,
+        categorical: Union[list, np.ndarray] = None,
+        immutable: Union[list, np.ndarray] = None,
+        step_direction: dict = None,
     ):
         self.data = data
         self.y_desired = y_desired
@@ -105,21 +108,44 @@ class BasePopulation(ABC):
         self.immutable = immutable
         self.step_direction = step_direction
 
-        # self.action_set = self._action_set
+        self.set_actions()
 
-    def action_set(self, action_set=None):
+    def set_actions(self, action_set=None):
         """
         To be configured with the ActionSet object from the
         ``actionable-recourse`` library.
-
-        NOTE: ``recourse``'s ActionSet forces upper and lower bounds to be
-        between 0 and 1. This limitation should be removed in the future.
         """
-        if action_set is not None:
-            self._action_set = action_set
-        else:
-            pass
+
+        categorical = [] if self.categorical is None else self.categorical
+        immutable = [] if self.immutable is None else self.immutable
+        step = {} if self.step_direction is None else self.step_direction
+
+        if action_set is None:
+            action_set = ActionSet(
+                X=self.data,
+                y_desired=self.y_desired,
+                default_bounds=(0, 1)
+            )
+            for col in self.data.columns:
+                action_set[col].ub = self.data[col].max()
+                action_set[col].lb = self.data[col].min()
+                if col in immutable:
+                    action_set[col].actionable = False
+                if col in step.keys():
+                    action_set[col].step_direction = self.step_direction[col]
+                if col in categorical:
+                    action_set[col].variable_type = int
+
+        self._action_set = action_set
+
         return self
+
+    def set_params(self, **kwargs):
+        """
+        This should be used to add/update parameters. Use same approach as
+        sklearn's.
+        """
+        pass
 
     # @abstractmethod
     # def set_generator(self):
