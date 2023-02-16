@@ -11,11 +11,11 @@ class BaseEnvironment(ABC):
     multi-agent analysis of algorithmic recourse.
 
     Some relevant parameters will include:
-    - Population
-    - Decision model
-    - Threshold definition (which should accept fixed or dynamic thresholds)
+    - [] Population
+    - [] Decision model
+    - [] Threshold definition (which should accept fixed or dynamic thresholds)
         * Could be defined as a function?
-    - Agorithmic Recourse method
+    - [] Agorithmic Recourse method
 
     Attributes:
     - Current step
@@ -38,6 +38,8 @@ class BaseEnvironment(ABC):
 
     def update(self):
         """Moves environment to the next timestep"""
+        if not hasattr(self, "step_"):
+            self.step_ = 1
         pass
 
 
@@ -109,6 +111,9 @@ class BasePopulation(ABC):
         """
         To be configured with the ActionSet object from the
         ``actionable-recourse`` library.
+
+        NOTE: ``recourse``'s ActionSet forces upper and lower bounds to be
+        between 0 and 1. This limitation should be removed in the future.
         """
         if action_set is not None:
             self._action_set = action_set
