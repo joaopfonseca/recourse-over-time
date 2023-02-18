@@ -38,9 +38,6 @@ class ActionableRecourse:
         intercept = intercept - np.log(self.threshold / (1 - self.threshold))
         model.intercept_ = intercept
 
-        # NOTE: REMOVE THIS LINE - USED FOR TESTING PURPOSES
-        self.model_ = model
-
         return intercept, coefficients, model
 
     def _counterfactual(self, agent, action_set):
@@ -92,8 +89,8 @@ class ActionableRecourse:
 
         return counterfactual
 
-    def counterfactuals(self, population):
-        action_set = population._action_set
+    def counterfactual(self, population):
+        action_set = population.action_set_
 
         counterfactual_examples = population.data.apply(
             lambda agent: self._counterfactual(agent, action_set), axis=1
