@@ -23,15 +23,12 @@ population = BasePopulation(
     categorical=["cat_1"],
 )
 
-recourse = ActionableRecourse(
-    model=lr,
-    threshold=.6
-)
+recourse = ActionableRecourse(model=lr, threshold=0.6)
 
 environment = BaseEnvironment(
     population=population,
     recourse=recourse,
-    threshold=.6,
+    threshold=0.6,
 )
 
 assert environment.step_ == 0

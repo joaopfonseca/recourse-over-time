@@ -13,11 +13,7 @@ y_pred = lr.predict(df)
 
 # Testing counterfactuals
 population = BasePopulation(
-    data=df,
-    y_desired=1,
-    categorical=None,
-    immutable=["b"],
-    step_direction={"a": -1}
+    data=df, y_desired=1, categorical=None, immutable=["b"], step_direction={"a": -1}
 )
 
 # TODO: test for y_desired = 0
