@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 import numpy as np
-from recourse import Flipset
+from .flipset import Flipset
 
 
 class ActionableRecourse:

@@ -1,4 +1,4 @@
 from .base import BaseEnvironment, BasePopulation
-from .actionable_recourse import ActionableRecourse
+from . import recourse
 
-__all__ = ["BaseEnvironment", "BasePopulation", "ActionableRecourse"]
+__all__ = ["BaseEnvironment", "BasePopulation", "recourse"]

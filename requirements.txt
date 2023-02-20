@@ -1,9 +1,7 @@
 numpy
 pandas
-
-# Implementation from the paper "Actionable Recourse in Linear Classification"
-mip
-actionable-recourse
+cplex
+prettytable
 
 
 flake8

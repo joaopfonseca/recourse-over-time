@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union
 from copy import deepcopy
-from recourse import ActionSet
+from .recourse import ActionSet
 import numpy as np
 import pandas as pd
 
@@ -42,9 +42,9 @@ class BaseEnvironment(ABC):
         self,
         population,
         recourse,
-        threshold=.5,
-        adaptation: Union[float, np.ndarray, pd.Series] = 1.,
-        growth_rate=0.,
+        threshold=0.5,
+        adaptation: Union[float, np.ndarray, pd.Series] = 1.0,
+        growth_rate=0.0,
     ):
         self.population = population
         self.recourse = recourse
@@ -56,7 +56,6 @@ class BaseEnvironment(ABC):
         self.save_metadata()
 
     def _check(self):
-
         # the original population parameter should not be modified
         if not hasattr(self, "population_"):
             self.population_ = deepcopy(self.population)
@@ -66,9 +65,7 @@ class BaseEnvironment(ABC):
 
         if not hasattr(self, "adaptation_"):
             if type(self.adaptation) in [int, float]:
-                self.adaptation_ = pd.Series(
-                    1, index=self.population_.data.index
-                )
+                self.adaptation_ = pd.Series(1, index=self.population_.data.index)
             else:
                 raise NotImplementedError()
 
@@ -130,7 +127,7 @@ class BaseEnvironment(ABC):
 
         self.metadata_[self.step_] = {
             "population": self.population_,
-            "adaptation": self.adaptation_
+            "adaptation": self.adaptation_,
         }
 
     def update(self):
@@ -161,9 +158,7 @@ class BaseEnvironment(ABC):
         cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
 
         # Update existing agents' feature values
-        new_factuals = (
-            factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
-        )
+        new_factuals = factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
         self.population_.data = new_factuals
 
         # Add new agents (replace removed agents and add new agents according
@@ -261,9 +256,7 @@ class BasePopulation(ABC):
 
         if action_set is None:
             action_set = ActionSet(
-                X=self.data,
-                y_desired=self.y_desired,
-                default_bounds=(0, 1)
+                X=self.data, y_desired=self.y_desired, default_bounds=(0, 1)
             )
             for col in self.data.columns:
                 if col in immutable:
@@ -288,4 +281,3 @@ class BasePopulation(ABC):
         sklearn's.
         """
         pass
-
