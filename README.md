@@ -12,6 +12,8 @@ Discussion topics:
         * Should Avg distance consider past time steps as well?
         * If so, how do we define the weights between the current time step
             and past time steps?
+        * How should we calculate the distance when there are categorical
+            (binary) features?
     2. Generate adaptation ratios;
         * Should there be a correlation between the adaptation ratio and
             proximity to the goal?
