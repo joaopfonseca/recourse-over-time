@@ -425,9 +425,14 @@ class Flipset(object):
     def _add_to_df(self, items):
         if len(items) > 0:
             row_data = list(map(lambda item: self._item_to_df_row(item), items))
-            self._df = self._df.append(row_data, ignore_index=True, sort=True)[
-                self._df.columns.tolist()
-            ]
+
+            self._df = pd.concat(
+                [self._df, pd.Series(row_data[0])], ignore_index=True, sort=True
+            )[self._df.columns.tolist()]
+
+            # self._df = self._df.append(row_data, ignore_index=True, sort=True)[
+            #     self._df.columns.tolist()
+            # ]
             self.sort()
 
     def _item_to_df_row(self, item):
