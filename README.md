@@ -18,4 +18,4 @@ Discussion topics:
         * Should there be a correlation between the adaptation ratio and
             proximity to the goal?
     3. For each agent, do ``adaptation * avg distance``
-
+- Literature analysis

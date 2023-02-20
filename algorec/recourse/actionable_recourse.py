@@ -1,7 +1,7 @@
 import logging
 from copy import deepcopy
 import numpy as np
-from recourse import Flipset
+from .flipset import Flipset
 
 
 class ActionableRecourse:
@@ -75,14 +75,12 @@ class ActionableRecourse:
         actions = fs_pop.actions
 
         for action in actions:
-            candidate_cf = (factual + action).reshape(
-                (1, -1)
-            )  # Reshape to keep two-dim. input
+            candidate_cf = agent + action
 
             # Check if candidate counterfactual really flipps the prediction of
             # ML model
-            pred_cf = np.argmax(model.predict_proba(candidate_cf))
-            pred_f = np.argmax(model.predict_proba(factual.reshape(1, -1)))
+            pred_cf = np.argmax(model.predict_proba(candidate_cf.to_frame().T))
+            pred_f = np.argmax(model.predict_proba(agent.to_frame().T))
             if pred_cf != pred_f:
                 counterfactual.iloc[:] = candidate_cf.squeeze()
                 break

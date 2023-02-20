@@ -2,11 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from algorec import (
-    BaseEnvironment,
-    BasePopulation,
-    ActionableRecourse,
-)
+from algorec import BaseEnvironment, BasePopulation
+from algorec.recourse import ActionableRecourse
 
 rng = np.random.default_rng(42)
 df = pd.DataFrame(rng.random((100, 4)), columns=["a", "b", "c", "d"])
