@@ -11,14 +11,23 @@ import numpy as np
 
 from .utils import parse_classifier_args
 from .action_set import ActionSet
-from .cplex_helper import Cplex, SparsePair, set_cpx_parameters, set_cpx_display_options, set_cpx_time_limit, set_cpx_node_limit, toggle_cpx_preprocessing, DEFAULT_CPLEX_PARAMETERS
+from .cplex_helper import (
+    Cplex,
+    SparsePair,
+    set_cpx_parameters,
+    set_cpx_display_options,
+    set_cpx_time_limit,
+    set_cpx_node_limit,
+    toggle_cpx_preprocessing,
+    DEFAULT_CPLEX_PARAMETERS,
+)
 
 
 # todo fix bug when all points are non-zero but non-action
 # (demo_credit_script shouldn't run)
 class RecourseBuilder(object):
     _default_check_flag = True
-    _default_print_flag = True
+    _default_print_flag = False  # True
     _default_node_limit = float("inf")
     _default_time_limit = float("inf")
     _default_mip_cost_type = "max"
@@ -582,10 +591,9 @@ class RecourseBuilder(object):
 
 
 class _RecourseBuilder(RecourseBuilder):
-
     _default_cplex_parameters = dict(DEFAULT_CPLEX_PARAMETERS)
 
-    def __init__(self, action_set, x = None, **kwargs):
+    def __init__(self, action_set, x=None, **kwargs):
         """
         :param x: vector of input variables for person x
         :param intercept: intercept value of score function
@@ -595,14 +603,17 @@ class _RecourseBuilder(RecourseBuilder):
                        (e.g. type of cost function to use / max items etc.)
         """
         # initialize Cplex MIP
-        self._cpx_parameters = kwargs.get('cplex_parameters', self._default_cplex_parameters)
+        self._cpx_parameters = kwargs.get(
+            "cplex_parameters", self._default_cplex_parameters
+        )
         self._set_mip_time_limit = set_cpx_time_limit
         self._set_mip_node_limit = set_cpx_node_limit
-        self._set_mip_display = lambda mip, flag: set_cpx_display_options(mip, display_lp = flag, display_mip = flag, display_parameters = flag)
+        self._set_mip_display = lambda mip, flag: set_cpx_display_options(
+            mip, display_lp=flag, display_mip=flag, display_parameters=flag
+        )
 
         ## initialize base class
-        super().__init__(action_set = action_set, x = x, **kwargs)
-
+        super().__init__(action_set=action_set, x=x, **kwargs)
 
     #### building MIP ####
     def build_mip(self):
@@ -626,39 +637,58 @@ class _RecourseBuilder(RecourseBuilder):
         vars = mip.variables
         cons = mip.linear_constraints
         n_actionable = len(build_info)
-        n_indicators = len(indices['action_ind_names'])
+        n_indicators = len(indices["action_ind_names"])
 
         # define a[j]
-        vars.add(names = indices['action_var_names'],
-                 types = ['C'] * n_actionable,
-                 lb = indices['action_lb'],
-                 ub = indices['action_ub'])
+        vars.add(
+            names=indices["action_var_names"],
+            types=["C"] * n_actionable,
+            lb=indices["action_lb"],
+            ub=indices["action_ub"],
+        )
 
         # score constraint
         # y_desired = +1:  sum_j w[j]*(x[j]+a[j]) > 0 -> sum_j w[j] a[j] > -score
         # y_desired = -1:  sum_j w[j]*(x[j]+a[j]) < 0 -> sum_j w[j] a[j] < -score
-        score_constraint_sense = 'G' if self.action_set.y_desired > 0 else 'L'
-        cons.add(names = ['score'],
-                 lin_expr = [SparsePair(ind = indices['action_var_names'], val = indices['coefficients'])],
-                 senses = [score_constraint_sense],
-                 rhs = [-self.score()])
+        score_constraint_sense = "G" if self.action_set.y_desired > 0 else "L"
+        cons.add(
+            names=["score"],
+            lin_expr=[
+                SparsePair(ind=indices["action_var_names"], val=indices["coefficients"])
+            ],
+            senses=[score_constraint_sense],
+            rhs=[-self.score()],
+        )
 
         # define indicators u[j][k] = 1 if a[j] = actions[j][k]
-        vars.add(names = indices['action_ind_names'], types = ['B'] * n_indicators)
+        vars.add(names=indices["action_ind_names"], types=["B"] * n_indicators)
 
         # restrict a[j] to feasible values using a 1 of K constraint setup
         # restrict a[j] to actions in feasible set and make sure exactly 1 indicator u[j][k] is on
         for info in build_info.values():
             # 1. a[j]  =   sum_k u[j][k] * actions[j][k] -> 0.0   =   sum u[j][k] * actions[j][k] - a[j]
             # 2. sum_k u[j][k] = 1.0
-            cons.add(names = ['set_a[%d]' % info['idx'], 'pick_a[%d]' % info['idx']],
-                     lin_expr = [SparsePair(ind = info['action_var_name'] + info['action_ind_names'], val = [-1.0] + info['actions']),
-                                 SparsePair(ind = info['action_ind_names'], val = [1.0] * len(info['actions']))],
-                     senses = ["E", "E"],
-                     rhs = [0.0, 1.0])
+            cons.add(
+                names=["set_a[%d]" % info["idx"], "pick_a[%d]" % info["idx"]],
+                lin_expr=[
+                    SparsePair(
+                        ind=info["action_var_name"] + info["action_ind_names"],
+                        val=[-1.0] + info["actions"],
+                    ),
+                    SparsePair(
+                        ind=info["action_ind_names"], val=[1.0] * len(info["actions"])
+                    ),
+                ],
+                senses=["E", "E"],
+                rhs=[0.0, 1.0],
+            )
 
             # declare indicator variables as SOS set
-            mip.SOS.add(type = "1", name = "sos_u[%d]" % info['idx'], SOS = SparsePair(ind = info['action_ind_names'], val = info['actions']))
+            mip.SOS.add(
+                type="1",
+                name="sos_u[%d]" % info["idx"],
+                SOS=SparsePair(ind=info["action_ind_names"], val=info["actions"]),
+            )
 
         # limit number of features per action
         #
@@ -671,13 +701,15 @@ class _RecourseBuilder(RecourseBuilder):
         # min_size <= size:
         # min_size          <=  n_actionable - sum_j u[j][0]
         # sum_j u[j][0]     <=  n_actionable - min_size
-        size_expr = SparsePair(ind = indices['action_off_names'], val = [1.0] * n_actionable)
-        cons.add(names = ['max_items', 'min_items'],
-                 lin_expr = [size_expr, size_expr],
-                 senses = ['G', 'L'],
-                 rhs = [float(n_actionable - max_items), float(n_actionable - min_items)])
-
-
+        size_expr = SparsePair(
+            ind=indices["action_off_names"], val=[1.0] * n_actionable
+        )
+        cons.add(
+            names=["max_items", "min_items"],
+            lin_expr=[size_expr, size_expr],
+            senses=["G", "L"],
+            rhs=[float(n_actionable - max_items), float(n_actionable - min_items)],
+        )
 
         for c in self.action_set.constraints:
             """
@@ -700,49 +732,66 @@ class _RecourseBuilder(RecourseBuilder):
             range_values = rhs - lhs = float(c.ub - c.lb)
             """
             k = len(c.indices)
-            null_names = [indices['nullify_ind_names'][j] for j in c.indices]
-            cons.add(names = ['subset_limit_%s' % c.id],
-                     lin_expr = [SparsePair(ind = null_names, val = [-1.0] * k)],
-                     senses=['R'],
-                     rhs = [float(c.lb) - k],
-                     range_values = [float(c.ub - c.lb)])
-
+            null_names = [indices["nullify_ind_names"][j] for j in c.indices]
+            cons.add(
+                names=["subset_limit_%s" % c.id],
+                lin_expr=[SparsePair(ind=null_names, val=[-1.0] * k)],
+                senses=["R"],
+                rhs=[float(c.lb) - k],
+                range_values=[float(c.ub - c.lb)],
+            )
 
         # add constraints for cost function
-        if cost_type in ('total', 'local'):
-            indices.pop('cost_var_names')
-            objval_pairs = list(chain(*[list(zip(v['action_ind_names'], v['costs'])) for v in build_info.values()]))
+        if cost_type in ("total", "local"):
+            indices.pop("cost_var_names")
+            objval_pairs = list(
+                chain(
+                    *[
+                        list(zip(v["action_ind_names"], v["costs"]))
+                        for v in build_info.values()
+                    ]
+                )
+            )
             mip.objective.set_linear(objval_pairs)
 
-        elif cost_type == 'max':
-
-            indices['max_cost_var_name'] = ['max_cost']
+        elif cost_type == "max":
+            indices["max_cost_var_name"] = ["max_cost"]
 
             ## handle empty actionsets
-            indices['epsilon'] = np.min(indices['cost_df'] or np.inf) / np.sum(indices['cost_ub'])
-            vars.add(names = indices['max_cost_var_name'] + indices['cost_var_names'],
-                     types = ['C'] * (n_actionable + 1),
-                     obj = [1.0] + [indices['epsilon']] * n_actionable)
+            indices["epsilon"] = np.min(indices["cost_df"] or np.inf) / np.sum(
+                indices["cost_ub"]
+            )
+            vars.add(
+                names=indices["max_cost_var_name"] + indices["cost_var_names"],
+                types=["C"] * (n_actionable + 1),
+                obj=[1.0] + [indices["epsilon"]] * n_actionable,
+            )
 
-            #lb = [0.0] * (n_actionable + 1)) # default values are 0.0
+            # lb = [0.0] * (n_actionable + 1)) # default values are 0.0
             cost_constraints = {
-                'names': [],
-                'lin_expr': [],
-                'senses': ["E", "G"] * n_actionable,
-                'rhs': [0.0, 0.0] * n_actionable,
-                }
+                "names": [],
+                "lin_expr": [],
+                "senses": ["E", "G"] * n_actionable,
+                "rhs": [0.0, 0.0] * n_actionable,
+            }
 
             for info in build_info.values():
+                cost_constraints["names"].extend(
+                    ["def_cost[%d]" % info["idx"], "set_max_cost[%d]" % info["idx"]]
+                )
 
-                cost_constraints['names'].extend([
-                    'def_cost[%d]' % info['idx'],
-                    'set_max_cost[%d]' % info['idx']
-                    ])
-
-                cost_constraints['lin_expr'].extend([
-                    SparsePair(ind = info['cost_var_name'] + info['action_ind_names'], val = [-1.0] + info['costs']),
-                    SparsePair(ind = indices['max_cost_var_name'] + info['cost_var_name'], val = [1.0, -1.0])
-                ])
+                cost_constraints["lin_expr"].extend(
+                    [
+                        SparsePair(
+                            ind=info["cost_var_name"] + info["action_ind_names"],
+                            val=[-1.0] + info["costs"],
+                        ),
+                        SparsePair(
+                            ind=indices["max_cost_var_name"] + info["cost_var_name"],
+                            val=[1.0, -1.0],
+                        ),
+                    ]
+                )
 
             cons.add(**cost_constraints)
 
@@ -777,9 +826,8 @@ class _RecourseBuilder(RecourseBuilder):
         self._mip = mip
         self._mip_indices = indices
 
-
     #### MIP settings ###
-    def set_mip_parameters(self, param = None):
+    def set_mip_parameters(self, param=None):
         """
         updates MIP parameters
         :param param:
@@ -790,32 +838,30 @@ class _RecourseBuilder(RecourseBuilder):
 
         self._mip = set_cpx_parameters(self._mip, param)
 
-
     #### solving MIP ###
     def solve_mip(self):
         self.mip.solve()
 
-
     @property
     def solution_info(self):
-
-        assert hasattr(self._mip, 'solution')
+        assert hasattr(self._mip, "solution")
         mip = self._mip
         sol = mip.solution
         info = self._empty_mip_solution_info
         if sol.is_primal_feasible():
-
             indices = self._mip_indices
-            variable_idx = indices['var_idx']
+            variable_idx = indices["var_idx"]
 
             # parse actions
-            action_values = sol.get_values(indices['action_var_names'])
+            action_values = sol.get_values(indices["action_var_names"])
 
-            if 'cost_var_names' in indices and self.mip_cost_type != 'total':
-                cost_values = sol.get_values(indices['cost_var_names'])
+            if "cost_var_names" in indices and self.mip_cost_type != "total":
+                cost_values = sol.get_values(indices["cost_var_names"])
             else:
-                ind_idx = np.flatnonzero(np.array(sol.get_values(indices['action_ind_names'])))
-                ind_names = [indices['action_ind_names'][int(k)] for k in ind_idx]
+                ind_idx = np.flatnonzero(
+                    np.array(sol.get_values(indices["action_ind_names"]))
+                )
+                ind_names = [indices["action_ind_names"][int(k)] for k in ind_idx]
                 cost_values = mip.objective.get_linear(ind_names)
 
             actions = np.zeros(self.n_variables)
@@ -824,37 +870,39 @@ class _RecourseBuilder(RecourseBuilder):
             costs = np.zeros(self.n_variables)
             np.put(costs, variable_idx, cost_values)
 
-            info.update({
-                'feasible': True,
-                'status': sol.get_status_string(),
-                #
-                'actions': actions,
-                'costs': costs,
-                #
-                'upperbound': sol.get_objective_value(),
-                'lowerbound': sol.MIP.get_best_objective(),
-                'gap': sol.MIP.get_mip_relative_gap(),
-                #
-                'iterations': sol.progress.get_num_iterations(),
-                'nodes_processed': sol.progress.get_num_nodes_processed(),
-                'nodes_remaining': sol.progress.get_num_nodes_remaining()
-                })
+            info.update(
+                {
+                    "feasible": True,
+                    "status": sol.get_status_string(),
+                    #
+                    "actions": actions,
+                    "costs": costs,
+                    #
+                    "upperbound": sol.get_objective_value(),
+                    "lowerbound": sol.MIP.get_best_objective(),
+                    "gap": sol.MIP.get_mip_relative_gap(),
+                    #
+                    "iterations": sol.progress.get_num_iterations(),
+                    "nodes_processed": sol.progress.get_num_nodes_processed(),
+                    "nodes_remaining": sol.progress.get_num_nodes_remaining(),
+                }
+            )
 
-            if self.mip_cost_type == 'max':
-                info['cost'] = sol.get_values(indices['max_cost_var_name'])[0]
+            if self.mip_cost_type == "max":
+                info["cost"] = sol.get_values(indices["max_cost_var_name"])[0]
             else:
-                info['cost'] = info['upperbound']
+                info["cost"] = info["upperbound"]
 
         else:
-
-            info.update({
-                'iterations': sol.progress.get_num_iterations(),
-                'nodes_processed': sol.progress.get_num_nodes_processed(),
-                'nodes_remaining': sol.progress.get_num_nodes_remaining()
-                })
+            info.update(
+                {
+                    "iterations": sol.progress.get_num_iterations(),
+                    "nodes_processed": sol.progress.get_num_nodes_processed(),
+                    "nodes_remaining": sol.progress.get_num_nodes_remaining(),
+                }
+            )
 
         return info
-
 
     #### flipset geneation ###
     def set_mip_min_items(self, n_items):
@@ -865,7 +913,6 @@ class _RecourseBuilder(RecourseBuilder):
         """
         self._mip.linear_constraints.set_rhs("min_items", n_items)
 
-
     def set_mip_max_items(self, n_items):
         """
         sets maximum number of non-zero elements in MIP (used by set_item_limits)
@@ -874,7 +921,6 @@ class _RecourseBuilder(RecourseBuilder):
         """
         self._mip.linear_constraints.set_rhs("max_items", n_items)
 
-
     def remove_all_features(self):
         """
         removes feature combination from feasible region of MIP
@@ -882,7 +928,7 @@ class _RecourseBuilder(RecourseBuilder):
         """
         mip = self._mip
         ## "action_off_names" ex: ['u[3][0]', 'u[4][0]'...] are variables that indicate an action is "off".
-        feature_off_idxs = self._mip_indices['action_off_names']
+        feature_off_idxs = self._mip_indices["action_off_names"]
         ## get the values assigned by the solver.
         values_of_off_indices = np.array(mip.solution.get_values(feature_off_idxs))
         ## if the "off index" are off (i.e. = 0), that means the action is "on"
@@ -891,7 +937,6 @@ class _RecourseBuilder(RecourseBuilder):
         mip.variables.set_lower_bounds([(feature_off_idxs[j], 1.0) for j in on_idx])
         return
 
-
     def remove_feature_combination(self):
         """
         removes feature combination from feasible region of MIP
@@ -899,7 +944,7 @@ class _RecourseBuilder(RecourseBuilder):
         """
 
         mip = self._mip
-        #feature_off_idxs = self._mip_indices['action_off_names']
+        # feature_off_idxs = self._mip_indices['action_off_names']
 
         # todo: revisit this constraint
         """
@@ -912,20 +957,21 @@ class _RecourseBuilder(RecourseBuilder):
                     off_idx[j] = action_off_names[j]
         """
 
-        feature_off_idxs = self._mip_indices['nullify_ind_names']
+        feature_off_idxs = self._mip_indices["nullify_ind_names"]
         u = np.array(mip.solution.get_values(feature_off_idxs))
-
 
         ## if the "off index" are off (i.e. = 0), that means the action is "on"
         on_idx = np.isclose(u, 0.0)
 
         ## array where con_val[i] = 1 if feature is off, -1 if feature is on.
-        con_vals = np.ones(len(feature_off_idxs), dtype = np.float_)
+        con_vals = np.ones(len(feature_off_idxs), dtype=np.float_)
         con_vals[on_idx] = -1.0
 
         ## one minus number of features that are off.
-        con_rhs =  np.sum(~on_idx) - 1
-        mip.linear_constraints.add(lin_expr = [SparsePair(ind = feature_off_idxs, val = con_vals.tolist())],
-                                   senses = ["L"],
-                                   rhs = [float(con_rhs)])
+        con_rhs = np.sum(~on_idx) - 1
+        mip.linear_constraints.add(
+            lin_expr=[SparsePair(ind=feature_off_idxs, val=con_vals.tolist())],
+            senses=["L"],
+            rhs=[float(con_rhs)],
+        )
         return

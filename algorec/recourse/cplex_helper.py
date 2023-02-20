@@ -4,7 +4,8 @@ from functools import reduce
 from cplex import Cplex, SparsePair
 from cplex.exceptions import CplexError
 
-#Copying
+
+# Copying
 def copy_cplex(cpx):
     """
     Copy a Cplex object
@@ -13,7 +14,7 @@ def copy_cplex(cpx):
     """
     cpx_copy = Cplex(cpx)
     cpx_parameters = cpx.parameters.get_changed()
-    for (pname, pvalue) in cpx_parameters:
+    for pname, pvalue in cpx_parameters:
         phandle = reduce(getattr, str(pname).split("."), cpx_copy)
         phandle.set(pvalue)
     return cpx_copy
@@ -42,7 +43,6 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
 
     # convert inputs
     if nvars == 1:
-
         # convert to list
         name = name if isinstance(name, list) else [name]
         obj = [float(obj[0])] if isinstance(obj, list) else [float(obj)]
@@ -51,7 +51,6 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
         vtype = vtype if isinstance(vtype, list) else [vtype]
 
     else:
-
         # convert to list
         if isinstance(vtype, np.ndarray):
             vtype = vtype.tolist()
@@ -61,7 +60,10 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
             elif len(vtype) == nvars:
                 vtype = list(vtype)
             else:
-                raise ValueError('invalid length: len(vtype) = %d. expected either 1 or %d' % (len(vtype), nvars))
+                raise ValueError(
+                    "invalid length: len(vtype) = %d. expected either 1 or %d"
+                    % (len(vtype), nvars)
+                )
 
         if isinstance(obj, np.ndarray):
             obj = obj.tolist()
@@ -71,7 +73,10 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
             elif len(obj) == 1:
                 obj = nvars * [float(obj)]
             else:
-                raise ValueError('invalid length: len(obj) = %d. expected either 1 or %d' % (len(obj), nvars))
+                raise ValueError(
+                    "invalid length: len(obj) = %d. expected either 1 or %d"
+                    % (len(obj), nvars)
+                )
         else:
             obj = nvars * [float(obj)]
 
@@ -83,7 +88,10 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
             elif len(ub) == 1:
                 ub = nvars * [float(ub)]
             else:
-                raise ValueError('invalid length: len(ub) = %d. expected either 1 or %d' % (len(ub), nvars))
+                raise ValueError(
+                    "invalid length: len(ub) = %d. expected either 1 or %d"
+                    % (len(ub), nvars)
+                )
         else:
             ub = nvars * [float(ub)]
 
@@ -95,7 +103,10 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
             elif len(ub) == 1:
                 lb = nvars * [float(lb)]
             else:
-                raise ValueError('invalid length: len(lb) = %d. expected either 1 or %d' % (len(lb), nvars))
+                raise ValueError(
+                    "invalid length: len(lb) = %d. expected either 1 or %d"
+                    % (len(lb), nvars)
+                )
         else:
             lb = nvars * [float(lb)]
 
@@ -115,51 +126,51 @@ def add_variable_cpx(cpx, name, obj, ub, lb, vtype):
         assert isinstance(vtype[n], str)
 
     if (vtype.count(vtype[0]) == len(vtype)) and vtype[0] == cpx.variables.type.binary:
-        cpx.variables.add(names = name, obj = obj, types = vtype)
+        cpx.variables.add(names=name, obj=obj, types=vtype)
     else:
-        cpx.variables.add(names = name, obj = obj, ub = ub, lb = lb, types = vtype)
+        cpx.variables.add(names=name, obj=obj, ub=ub, lb=lb, types=vtype)
 
 
 # Parameter Setting
 DEFAULT_CPLEX_PARAMETERS = {
     #
-    'display_cplex_progress': False,
-    #set to True to show CPLEX progress in console
+    "display_cplex_progress": False,
+    # set to True to show CPLEX progress in console
     #
-    'n_cores': 1,
+    "n_cores": 1,
     # Number of CPU cores to use in B & B
     # May have to set n_cores = 1 in order to use certain control callbacks in CPLEX 12.7.0 and earlier
     #
-    'randomseed': 0,
+    "randomseed": 0,
     # This parameter sets the random seed differently for diversity of solutions.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/RandomSeed.html
     #
-    'time_limit': 1e75,
+    "time_limit": 1e75,
     # runtime before stopping,
     #
-    'node_limit': 9223372036800000000,
+    "node_limit": 9223372036800000000,
     # number of nodes to process before stopping,
     #
-    'mipgap': np.finfo('float').eps,
+    "mipgap": np.finfo("float").eps,
     # Sets a relative tolerance on the gap between the best integer objective and the objective of the best node remaining.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/EpGap.html
     #
-    'absmipgap': np.finfo('float').eps,
+    "absmipgap": np.finfo("float").eps,
     # Sets an absolute tolerance on the gap between the best integer objective and the objective of the best node remaining.
     # When this difference falls below the value of this parameter, the mixed integer optimization is stopped.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/EpAGap.html
     #
-    'objdifference': 0.0,
+    "objdifference": 0.0,
     # Used to update the cutoff each time a mixed integer solution is found. This value is subtracted from objective
     # value of the incumbent update, so that the solver ignore solutions that will not improve the incumbent by at
     # least this amount.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ObjDif.html#
     #
-    'integrality_tolerance': 0.0,
+    "integrality_tolerance": 0.0,
     # specifies the amount by which an variable can differ from an integer and be considered integer feasible. 0 is OK
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/EpInt.html
     #
-    'mipemphasis': 0,
+    "mipemphasis": 0,
     # Controls trade-offs between speed, feasibility, optimality, and moving bounds in MIP.
     # 0     =	Balance optimality and feasibility; default
     # 1	    =	Emphasize feasibility over optimality
@@ -168,14 +179,14 @@ DEFAULT_CPLEX_PARAMETERS = {
     # 4	    =	Emphasize finding hidden feasible solutions
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/MIPEmphasis.html
     #
-    'bound_strengthening': -1,
+    "bound_strengthening": -1,
     # Decides whether to apply bound strengthening in mixed integer programs (MIPs).
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/BndStrenInd.html
     # -1    = cplex chooses
     # 0     = no bound strengthening
     # 1     = bound strengthening
     #
-    'cover_cuts': -1,
+    "cover_cuts": -1,
     # Decides whether or not cover cuts should be generated for the problem.
     # https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/Covers.html
     # -1    = Do not generate cover cuts
@@ -184,7 +195,7 @@ DEFAULT_CPLEX_PARAMETERS = {
     # 2	    = Generate cover cuts aggressively
     # 3     = Generate cover cuts very  aggressively
     #
-    'zero_half_cuts': -1,
+    "zero_half_cuts": -1,
     # Decides whether or not to generate zero-half cuts for the problem. (set to off since these are not effective)
     # https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ZeroHalfCuts.html
     # -1    = Do not generate MIR cuts
@@ -192,7 +203,7 @@ DEFAULT_CPLEX_PARAMETERS = {
     # 1	    = Generate MIR cuts moderately
     # 2	    = Generate MIR cuts aggressively
     #
-    'mir_cuts': -1,
+    "mir_cuts": -1,
     # Decides whether or not to generate mixed-integer rounding cuts for the problem. (set to off since these are not effective)
     # https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/MIRCuts.html
     # -1    = Do not generate zero-half cuts
@@ -200,7 +211,7 @@ DEFAULT_CPLEX_PARAMETERS = {
     # 1	    = Generate zero-half cuts moderately
     # 2	    = Generate zero-half cuts aggressively
     #
-    'implied_bound_cuts': 0,
+    "implied_bound_cuts": 0,
     # Decides whether or not to generate valid implied bound cuts for the problem.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ImplBdLocal.html
     # -1    = Do not generate locally valid implied bound cuts
@@ -209,7 +220,7 @@ DEFAULT_CPLEX_PARAMETERS = {
     # 2	    = Generate locally valid implied bound cuts aggressively
     # 3	    = Generate locally valid implied bound cuts very aggressively
     #
-    'locally_implied_bound_cuts': 3,
+    "locally_implied_bound_cuts": 3,
     # Decides whether or not to generate locally valid implied bound cuts for the problem.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ImplBdLocal.html
     # -1    = Do not generate locally valid implied bound cuts
@@ -218,49 +229,51 @@ DEFAULT_CPLEX_PARAMETERS = {
     # 2	    = Generate locally valid implied bound cuts aggressively
     # 3	    = Generate locally valid implied bound cuts very aggressively
     #
-    'scale_parameters': 0,
+    "scale_parameters": 0,
     # Decides how to scale the problem matrix.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ScaInd.html
     # 0     = equilibration scaling
     # 1     = aggressive scaling
     # -1    = no scaling
     #
-    'numerical_emphasis': 0,
+    "numerical_emphasis": 0,
     # Emphasizes precision in numerically unstable or difficult problems.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/NumericalEmphasis.html
     # 0     = off
     # 1     = on
     #
-    'poolsize': 100,
+    "poolsize": 100,
     # Limits the number of solutions kept in the solution pool
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/SolnPoolCapacity.html
     # number of feasible solutions to keep in solution pool
     #
-    'poolrelgap': float('nan'),
+    "poolrelgap": float("nan"),
     # Sets a relative tolerance on the objective value for the solutions in the solution pool.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/SolnPoolGap.html
     #
-    'poolreplace': 2,
+    "poolreplace": 2,
     # Designates the strategy for replacing a solution in the solution pool when the solution pool has reached its capacity.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/SolnPoolReplace.html
     # 0	= Replace the first solution (oldest) by the most recent solution; first in, first out; default
     # 1	= Replace the solution which has the worst objective
     # 2	= Replace solutions in order to build a set of diverse solutions
     #
-    'repairtries': 20,
+    "repairtries": 20,
     # Limits the attempts to repair an infeasible MIP start.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/RepairTries.html
     # -1	None: do not try to repair
     #  0	Automatic: let CPLEX choose; default
     #  N	Number of attempts
     #
-    'nodefilesize': (120 * 1024) / 1,
+    "nodefilesize": (120 * 1024) / 1,
     # size of the node file (for large scale problems)
     # if the B & B can no longer fit in memory, then CPLEX stores the B & B in a node file
-    }
+}
 
 
-def set_cpx_display_options(cpx, display_mip = True, display_parameters = False, display_lp = False):
+def set_cpx_display_options(
+    cpx, display_mip=True, display_parameters=False, display_lp=False
+):
     """
     Convenience function to turn on/off CPLEX functions
     :param cpx:
@@ -282,7 +295,7 @@ def set_cpx_display_options(cpx, display_mip = True, display_parameters = False,
     return cpx
 
 
-def set_cpx_parameters(cpx, param = DEFAULT_CPLEX_PARAMETERS):
+def set_cpx_parameters(cpx, param=DEFAULT_CPLEX_PARAMETERS):
     """
     Set parameters of a Cplex object
     :param cpx: Cplex object
@@ -296,46 +309,48 @@ def set_cpx_parameters(cpx, param = DEFAULT_CPLEX_PARAMETERS):
     # Record calls to C API
     # cpx.parameters.record.set(True)
 
-    if param['display_cplex_progress'] is (None or False):
-        cpx = set_cpx_display_options(cpx, display_mip = False, display_lp =  False, display_parameters = False)
+    if param["display_cplex_progress"] is (None or False):
+        cpx = set_cpx_display_options(
+            cpx, display_mip=False, display_lp=False, display_parameters=False
+        )
 
     # major parameters
-    p.randomseed.set(param['randomseed'])
-    p.threads.set(param['n_cores'])
+    p.randomseed.set(param["randomseed"])
+    p.threads.set(param["n_cores"])
     p.output.clonelog.set(0)
     p.parallel.set(1)
 
     # solution strategy
-    p.emphasis.mip.set(param['mipemphasis'])
-    p.preprocessing.boundstrength.set(param['bound_strengthening'])
+    p.emphasis.mip.set(param["mipemphasis"])
+    p.preprocessing.boundstrength.set(param["bound_strengthening"])
 
     # cuts
-    p.mip.cuts.implied.set(param['implied_bound_cuts'])
-    p.mip.cuts.localimplied.set(param['locally_implied_bound_cuts'])
-    p.mip.cuts.zerohalfcut.set(param['zero_half_cuts'])
-    p.mip.cuts.mircut.set(param['mir_cuts'])
-    p.mip.cuts.covers.set(param['cover_cuts'])
+    p.mip.cuts.implied.set(param["implied_bound_cuts"])
+    p.mip.cuts.localimplied.set(param["locally_implied_bound_cuts"])
+    p.mip.cuts.zerohalfcut.set(param["zero_half_cuts"])
+    p.mip.cuts.mircut.set(param["mir_cuts"])
+    p.mip.cuts.covers.set(param["cover_cuts"])
     #
     # tolerances
-    p.emphasis.numerical.set(param['numerical_emphasis'])
-    p.mip.tolerances.integrality.set(param['integrality_tolerance'])
+    p.emphasis.numerical.set(param["numerical_emphasis"])
+    p.mip.tolerances.integrality.set(param["integrality_tolerance"])
 
     # initialization
-    p.mip.limits.repairtries.set(param['repairtries'])
+    p.mip.limits.repairtries.set(param["repairtries"])
 
     # solution pool
-    p.mip.pool.capacity.set(param['poolsize'])
-    p.mip.pool.replace.set(param['poolreplace'])
+    p.mip.pool.capacity.set(param["poolsize"])
+    p.mip.pool.replace.set(param["poolreplace"])
 
     # stopping
-    p.mip.tolerances.mipgap.set(param['mipgap'])
-    p.mip.tolerances.absmipgap.set(param['absmipgap'])
+    p.mip.tolerances.mipgap.set(param["mipgap"])
+    p.mip.tolerances.absmipgap.set(param["absmipgap"])
 
-    if param['time_limit'] < DEFAULT_CPLEX_PARAMETERS['time_limit']:
-        cpx = set_cpx_time_limit(cpx, param['time_limit'])
+    if param["time_limit"] < DEFAULT_CPLEX_PARAMETERS["time_limit"]:
+        cpx = set_cpx_time_limit(cpx, param["time_limit"])
 
-    if param['node_limit'] < DEFAULT_CPLEX_PARAMETERS['node_limit']:
-        cpx = set_cpx_node_limit(cpx, param['node_limit'])
+    if param["node_limit"] < DEFAULT_CPLEX_PARAMETERS["node_limit"]:
+        cpx = set_cpx_node_limit(cpx, param["node_limit"])
 
     return cpx
 
@@ -350,36 +365,36 @@ def get_cpx_parameters(cpx):
 
     param = {
         # major
-        'display_cplex_progress': p.mip.display.get() > 0,
-        'randomseed': p.randomseed.get(),
-        'n_cores': p.threads.set.get(),
+        "display_cplex_progress": p.mip.display.get() > 0,
+        "randomseed": p.randomseed.get(),
+        "n_cores": p.threads.set.get(),
         #
         # strategy
-        'mipemphasis': p.emphasis.mip.get(),
-        'scale_parameters': p.read.scale.get(),
-        'locally_implied_bound_cuts': p.mip.cuts.localimplied.get(),
+        "mipemphasis": p.emphasis.mip.get(),
+        "scale_parameters": p.read.scale.get(),
+        "locally_implied_bound_cuts": p.mip.cuts.localimplied.get(),
         #
         # stopping
-        'time_limit': p.mip.timelimit.get(),
-        'node_limit': p.mip.limits.nodes.get(),
-        'mipgap': p.mip.tolerances.mipgap.get(),
-        'absmipgap': p.mip.tolerances.absmipgap.get(),
+        "time_limit": p.mip.timelimit.get(),
+        "node_limit": p.mip.limits.nodes.get(),
+        "mipgap": p.mip.tolerances.mipgap.get(),
+        "absmipgap": p.mip.tolerances.absmipgap.get(),
         #
         # mip tolerances
-        'integrality_tolerance':p.mip.tolerances.integrality.get(),
-        'numerical_emphasis': p.parameters.emphasis.numerical.get(),
+        "integrality_tolerance": p.mip.tolerances.integrality.get(),
+        "numerical_emphasis": p.parameters.emphasis.numerical.get(),
         #
         # solution pool
-        'repairtries': p.mip.limits.repairtries.get(),
-        'poolsize': p.mip.pool.capacity.get(),
-        'poolreplace': p.mip.pool.replace.get(),
+        "repairtries": p.mip.limits.repairtries.get(),
+        "poolsize": p.mip.pool.capacity.get(),
+        "poolreplace": p.mip.pool.replace.get(),
         #
         # node file
         # mip.parameters.workdir.Cur  = exp_workdir;
         # mip.parameters.workmem.Cur                    = cplex_workingmem;
         # mip.parameters.mip.strategy.file.Cur          = 2; %nodefile uncompressed
         # mip.parameters.mip.limits.treememory.Cur      = cplex_nodefilesize;
-        }
+    }
 
     return param
 
@@ -401,7 +416,7 @@ def set_mip_cutoff_values(cpx, objval, objval_increment):
     return cpx
 
 
-def set_cpx_time_limit(cpx, time_limit = None):
+def set_cpx_time_limit(cpx, time_limit=None):
     """
     Convenience function to set a time limit on a Cplex object
     :param cpx: Cplex object
@@ -421,7 +436,7 @@ def set_cpx_time_limit(cpx, time_limit = None):
     return cpx
 
 
-def set_cpx_node_limit(cpx, node_limit = None):
+def set_cpx_node_limit(cpx, node_limit=None):
     """
     Convenience function to set a node limit on a Cplex object.
     The node limit determines the maximum number of nodes that can be solved in
@@ -431,7 +446,7 @@ def set_cpx_node_limit(cpx, node_limit = None):
     :return: cpx: Cplex object
     """
     max_node_limit = cpx.parameters.mip.limits.nodes.max()
-    if node_limit == float('inf'):
+    if node_limit == float("inf"):
         node_limit = max_node_limit
     elif node_limit is None:
         node_limit = max_node_limit
@@ -443,7 +458,7 @@ def set_cpx_node_limit(cpx, node_limit = None):
     return cpx
 
 
-def toggle_cpx_preprocessing(cpx, toggle = True):
+def toggle_cpx_preprocessing(cpx, toggle=True):
     """
     Toggle preprocessing on a Cplex object.
     This function is helpful for debugging, and running computational experiments
@@ -510,44 +525,46 @@ def get_stats_cpx(cpx):
     """
 
     INITIAL_SOLUTION_INFO = {
-        'status': 'no solution exists',
-        'status_code': float('nan'),
-        'has_solution': False,
-        'has_mipstats': False,
-        'iterations': 0,
-        'nodes_processed': 0,
-        'nodes_remaining': 0,
-        'values': float('nan'),
-        'objval': float('nan'),
-        'upperbound': float('nan'),
-        'lowerbound': float('nan'),
-        'gap': float('nan'),
-        }
+        "status": "no solution exists",
+        "status_code": float("nan"),
+        "has_solution": False,
+        "has_mipstats": False,
+        "iterations": 0,
+        "nodes_processed": 0,
+        "nodes_remaining": 0,
+        "values": float("nan"),
+        "objval": float("nan"),
+        "upperbound": float("nan"),
+        "lowerbound": float("nan"),
+        "gap": float("nan"),
+    }
 
     info = dict(INITIAL_SOLUTION_INFO)
     try:
         sol = cpx.solution
         progress_info = {
-            'status': sol.get_status_string(),
-            'status_code': sol.get_status(),
-            'iterations': sol.progress.get_num_iterations(),
-            'nodes_processed': sol.progress.get_num_nodes_processed(),
-            'nodes_remaining': sol.progress.get_num_nodes_remaining()}
+            "status": sol.get_status_string(),
+            "status_code": sol.get_status(),
+            "iterations": sol.progress.get_num_iterations(),
+            "nodes_processed": sol.progress.get_num_nodes_processed(),
+            "nodes_remaining": sol.progress.get_num_nodes_remaining(),
+        }
         info.update(progress_info)
-        info['has_mipstats'] = True
+        info["has_mipstats"] = True
     except CplexError:
         pass
 
     try:
         sol = cpx.solution
         solution_info = {
-            'values': np.array(sol.get_values()),
-            'objval': sol.get_objective_value(),
-            'upperbound': sol.MIP.get_cutoff(),
-            'lowerbound': sol.MIP.get_best_objective(),
-            'gap': sol.MIP.get_mip_relative_gap()}
+            "values": np.array(sol.get_values()),
+            "objval": sol.get_objective_value(),
+            "upperbound": sol.MIP.get_cutoff(),
+            "lowerbound": sol.MIP.get_best_objective(),
+            "gap": sol.MIP.get_mip_relative_gap(),
+        }
         info.update(solution_info)
-        info['has_solution'] = True
+        info["has_solution"] = True
     except CplexError:
         pass
 
@@ -555,7 +572,7 @@ def get_stats_cpx(cpx):
 
 
 # Initialization
-def add_mip_start_cpx(cpx, solution, effort_level = 1, name = None):
+def add_mip_start_cpx(cpx, solution, effort_level=1, name=None):
     """
     :param cpx: Cplex object
     :param solution: solution vector (list or np.array)
@@ -571,7 +588,7 @@ def add_mip_start_cpx(cpx, solution, effort_level = 1, name = None):
     if isinstance(solution, np.ndarray):
         solution = solution.tolist()
 
-    mip_start = SparsePair(val = solution, ind = list(range(len(solution))))
+    mip_start = SparsePair(val=solution, ind=list(range(len(solution))))
     if name is None:
         cpx.MIP_starts.add(mip_start, effort_level)
     else:
