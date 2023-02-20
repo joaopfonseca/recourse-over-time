@@ -99,16 +99,25 @@ class BaseEnvironment(ABC):
             population = self.population_
         return self.recourse.counterfactual(population)
 
-    # @abstractmethod
-    def update_adaptation_rate(self):
-        pass
+    def _counterfactual_vectors(self, factuals, counterfactuals):
+        # Compute avg distance to counterfactual
+        base_dist = np.linalg.norm(counterfactuals - factuals, axis=1).reshape(-1, 1)
+        avg_dist = base_dist[~np.isnan(base_dist)].mean()
+
+        # Get base counterfactual vectors
+        cf_vectors = avg_dist * ((counterfactuals - factuals) / base_dist)
+
+        # Compute adaptation ratio
+        # Compute euclidean distance for each agent
+        return cf_vectors
 
     # @abstractmethod
     def add_agents(self, n_agents):
         pass
 
     def remove_agents(self, indices):
-        self.population_.data = self.population_.data.loc[indices]
+        self.population_.data = self.population_.data.iloc[indices]
+        self.adaptation_ = self.adaptation_.iloc[indices]
         return self
 
     def save_metadata(self):
@@ -143,13 +152,17 @@ class BaseEnvironment(ABC):
         indices = np.where(~outcome.astype(bool))[0]
         self.remove_agents(indices)
 
-        # Get counterfactuals
+        # Get factuals + counterfactuals
+        factuals = self.population_.data
         counterfactuals = self.counterfactual()
 
+        # Get adaptation rate for all agents
+        # This part is tricky; How can this be achieved properly?
+        cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
+
         # Update existing agents' feature values
-        factuals = self.population_.data
         new_factuals = (
-            factuals + self.adaptation * (counterfactuals - factuals)
+            factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
         )
         self.population_.data = new_factuals
 
@@ -157,11 +170,6 @@ class BaseEnvironment(ABC):
         # to growth rate)
         n_new_agents = np.round(n_agents * self.growth_rate + indices.shape[0])
         self.add_agents(n_new_agents)
-
-        # Update adaptation rate for all agents
-        # This part is tricky; How can this be achieved properly?
-        # Right now the code below is purely provisional
-        self.update_adaptation_rate()
 
         # Update metadata and step number
         self.step_ += 1

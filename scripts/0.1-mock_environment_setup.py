@@ -32,3 +32,9 @@ environment = BaseEnvironment(
 )
 
 assert environment.step_ == 0
+
+environment.run_simulation(6)
+
+assert environment.step_ == 6
+assert environment.population_.data.shape[0] == 1
+assert environment.population_.data.index[0] == np.argmin(lr.predict_proba(df)[:, -1])
