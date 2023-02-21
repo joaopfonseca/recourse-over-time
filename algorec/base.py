@@ -65,7 +65,9 @@ class BaseEnvironment(ABC):
 
         if not hasattr(self, "adaptation_"):
             if type(self.adaptation) in [int, float]:
-                self.adaptation_ = pd.Series(1, index=self.population_.data.index)
+                self.adaptation_ = pd.Series(
+                    self.adaptation, index=self.population_.data.index
+                )
             else:
                 raise NotImplementedError()
 
@@ -126,8 +128,8 @@ class BaseEnvironment(ABC):
             self.metadata_ = {}
 
         self.metadata_[self.step_] = {
-            "population": self.population_,
-            "adaptation": self.adaptation_,
+            "population": deepcopy(self.population_),
+            "adaptation": deepcopy(self.adaptation_),
         }
 
     def update(self):
