@@ -2,6 +2,8 @@ numpy
 pandas
 cplex
 prettytable
+matplotlib
+seaborn
 
 
 flake8
