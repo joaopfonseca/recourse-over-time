@@ -3,9 +3,11 @@ from . import (
     populations,
     environments
 )
+from ._version import __version__
 
 __all__ = [
     "recourse",
     "populations",
-    "environments"
+    "environments",
+    "__version__"
 ]
