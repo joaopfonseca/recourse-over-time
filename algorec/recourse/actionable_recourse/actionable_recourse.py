@@ -1,10 +1,10 @@
 import logging
-from copy import deepcopy
 import numpy as np
 from .flipset import Flipset
+from ..base import BaseRecourse
 
 
-class ActionableRecourse:
+class ActionableRecourse(BaseRecourse):
     """
     Should work exactly as defined in the paper if the model is linear.
     Otherwise, an explainability model should be used to retrieve coefficients
@@ -26,19 +26,6 @@ class ActionableRecourse:
         self.flipset_size = flipset_size
         self.discretize = discretize
         self.sample = sample
-
-    def _get_coefficients(self):
-        """Utility function to retrieve model parameters."""
-
-        model = deepcopy(self.model)
-        intercept = self.model.intercept_
-        coefficients = self.model.coef_
-
-        # Adjusting the intercept to match the desired threshold.
-        intercept = intercept - np.log(self.threshold / (1 - self.threshold))
-        model.intercept_ = intercept
-
-        return intercept, coefficients, model
 
     def _counterfactual(self, agent, action_set):
         factual = agent.values
@@ -86,12 +73,3 @@ class ActionableRecourse:
                 break
 
         return counterfactual
-
-    def counterfactual(self, population):
-        action_set = population.action_set_
-
-        counterfactual_examples = population.data.apply(
-            lambda agent: self._counterfactual(agent, action_set), axis=1
-        )
-
-        return counterfactual_examples

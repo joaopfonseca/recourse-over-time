@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from algorec import BasePopulation
+from algorec.populations import BasePopulation
 from algorec.recourse import ActionableRecourse, NFeatureRecourse
 
 rng = np.random.default_rng(42)

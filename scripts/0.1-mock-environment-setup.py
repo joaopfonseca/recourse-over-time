@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from algorec import BaseEnvironment, BasePopulation
-from algorec.recourse import ActionableRecourse
+from algorec.environments import BaseEnvironment
+from algorec.populations import BasePopulation
+from algorec.recourse import NFeatureRecourse
 
 rng = np.random.default_rng(42)
 df = pd.DataFrame(rng.random((100, 4)), columns=["a", "b", "c", "d"])
@@ -20,7 +21,7 @@ population = BasePopulation(
     categorical=["cat_1"],
 )
 
-recourse = ActionableRecourse(model=lr, threshold=0.6)
+recourse = NFeatureRecourse(model=lr, threshold=0.6)
 
 environment = BaseEnvironment(
     population=population,

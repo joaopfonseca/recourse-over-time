@@ -6,7 +6,7 @@ from collections import namedtuple
 from prettytable import PrettyTable
 from scipy.stats import gaussian_kde as kde
 from scipy.interpolate import interp1d
-from .utils import parse_classifier_args
+from ..recourse.actionable_recourse.utils import parse_classifier_args
 
 # todo: add doc string for feasible values
 # todo: replace percentiles with scikit-learn API

@@ -4,7 +4,8 @@ from sklearn.linear_model import LogisticRegression
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from algorec import BasePopulation, BaseEnvironment
+from algorec.populations import BasePopulation
+from algorec.environments import BaseEnvironment
 from algorec.recourse import NFeatureRecourse
 
 rng = np.random.default_rng(42)
@@ -86,3 +87,4 @@ visualize_agent_scores(
     model=lr,
     threshold=0.65,
 )
+plt.show()

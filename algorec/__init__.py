@@ -1,4 +1,11 @@
-from .base import BaseEnvironment, BasePopulation
-from . import recourse
+from . import (
+    recourse,
+    populations,
+    environments
+)
 
-__all__ = ["BaseEnvironment", "BasePopulation", "recourse"]
+__all__ = [
+    "recourse",
+    "populations",
+    "environments"
+]

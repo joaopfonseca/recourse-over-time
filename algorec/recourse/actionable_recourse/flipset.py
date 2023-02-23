@@ -6,7 +6,7 @@ https://github.com/ustunb/actionable-recourse/blob/master/recourse/flipset.py
 import numpy as np
 import pandas as pd
 from .utils import parse_classifier_args
-from .action_set import ActionSet
+from ...populations import ActionSet
 from .builder import RecourseBuilder
 
 
