@@ -1,9 +1,9 @@
 # Recourse Game
 
 Implementation notes:
-- [] The dependencies ``actionable-recourse`` and ``mip`` should be removed in
+- [x] The dependencies ``actionable-recourse`` and ``mip`` should be removed in
     the future. The package is no longer maintained.
-- [] Test for both ``y_desired``=1 and ``y_desired``=0
+- [ ] Test for both ``y_desired``=1 and ``y_desired``=0
 
 Discussion topics:
 - Understand how concept drift can be studied/applied here
