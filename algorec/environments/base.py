@@ -73,28 +73,20 @@ class BaseEnvironment(ABC):
         if not hasattr(self, "step_"):
             self.step_ = 0
 
-        if not hasattr(self, "threshold_"):
-            self._update_threshold()
-
-        if not hasattr(self, "adaptation_"):
-            if self.adaptation_type not in ["binary", "continuous"]:
-                raise NotImplementedError()
-
-            if type(self.adaptation) in [int, float]:
-                self.adaptation_ = pd.Series(
-                    self.adaptation, index=self.population_.data.index
-                )
-            else:
-                raise NotImplementedError()
-
-        if not hasattr(self, "_max_id"):
-            self._max_id = self.population_.data.index.max()
-
         if not hasattr(self, "model_"):
             self.model_ = deepcopy(self.recourse.model)
 
+        if not hasattr(self, "threshold_"):
+            self._update_threshold()
+
         if not hasattr(self, "_rng"):
             self._rng = np.random.default_rng(self.random_state)
+
+        if not hasattr(self, "adaptation_"):
+            self._update_adaptation()
+
+        if not hasattr(self, "_max_id"):
+            self._max_id = self.population_.data.index.max()
 
     def _update_threshold(self):
         if self.threshold_type == "dynamic":
@@ -108,10 +100,17 @@ class BaseEnvironment(ABC):
         return self
 
     def _update_adaptation(self):
-        if self.adaptation_type == "binary":
-            self.adaptation_ = self._rng.binomial(
+
+        if self.adaptation_type == "continuous":
+            adaptation = self.adaptation
+        elif self.adaptation_type == "binary":
+            adaptation = self._rng.binomial(
                 1, self.adaptation, self.population_.data.shape[0]
             )
+        else:
+            raise NotImplementedError()
+
+        self.adaptation_ = pd.Series(adaptation, index=self.population_.data.index)
         return self
 
     def predict(self, population=None):
@@ -134,6 +133,10 @@ class BaseEnvironment(ABC):
         """
         if population is None:
             population = self.population_
+
+        # Ensure threshold is up-to-date
+        self.recourse.threshold = self.threshold_
+
         return self.recourse.counterfactual(population)
 
     def _counterfactual_vectors(self, factuals, counterfactuals):
@@ -214,7 +217,7 @@ class BaseEnvironment(ABC):
         # Add new agents (replace removed agents and add new agents according
         # to growth rate)
         if self.growth_rate != 0:
-            n_new_agents = np.round(n_agents * (self.growth_rate - 1) + n_removed)
+            n_new_agents = int(np.round(n_agents * (self.growth_rate - 1) + n_removed))
             self.add_agents(n_new_agents)
 
         # Update variables, metadata and step number

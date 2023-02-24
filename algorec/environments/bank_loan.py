@@ -7,7 +7,6 @@ class BankLoanApplication(BaseEnvironment):
         self,
         population,
         recourse,
-        generator,
         threshold=0.8,
         adaptation=0.2,
         growth_rate=1.0,
@@ -48,4 +47,5 @@ class BankLoanApplication(BaseEnvironment):
         # Add new agents to population
         self.population_.data = pd.concat([self.population_.data, new_agents])
 
+        self._max_id = self.population_.data.index.max()
         return self
