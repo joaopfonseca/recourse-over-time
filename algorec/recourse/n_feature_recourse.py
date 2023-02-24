@@ -21,11 +21,13 @@ class NFeatureRecourse(BaseRecourse):
             base_vector.shape[0] if self.n_features is None else self.n_features
         )
 
-        is_usable = np.array([
-            action_set[col].step_direction in [np.sign(coeff), 0]
-            and action_set[col].actionable
-            for col, coeff in zip(agent.index, base_vector)
-        ])
+        is_usable = np.array(
+            [
+                action_set[col].step_direction in [np.sign(coeff), 0]
+                and action_set[col].actionable
+                for col, coeff in zip(agent.index, base_vector)
+            ]
+        )
         base_vector[~is_usable] = 0
 
         # Use features with highest contribution towards the threshold

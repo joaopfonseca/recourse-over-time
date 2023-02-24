@@ -7,6 +7,7 @@ class BaseRecourse(ABC):
     """
     Base class to define recourse methods.
     """
+
     def __init__(self, model, threshold=0.5):
         self.model = model
         self.threshold = threshold
@@ -36,5 +37,3 @@ class BaseRecourse(ABC):
         )
 
         return counterfactual_examples
-
-

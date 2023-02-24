@@ -4,7 +4,7 @@ from sklearn.linear_model import LogisticRegression
 
 from algorec.environments import BaseEnvironment
 from algorec.populations import BasePopulation
-from algorec.recourse import NFeatureRecourse
+from algorec.recourse import ActionableRecourse  # , NFeatureRecourse
 
 rng = np.random.default_rng(42)
 df = pd.DataFrame(rng.random((100, 4)), columns=["a", "b", "c", "d"])
@@ -21,7 +21,8 @@ population = BasePopulation(
     categorical=["cat_1"],
 )
 
-recourse = NFeatureRecourse(model=lr, threshold=0.6)
+recourse = ActionableRecourse(model=lr, threshold=0.6)
+# recourse = NFeatureRecourse(model=lr, threshold=0.6)
 
 environment = BaseEnvironment(
     population=population,
@@ -36,3 +37,5 @@ environment.run_simulation(6)
 assert environment.step_ == 6
 assert environment.population_.data.shape[0] == 1
 assert environment.population_.data.index[0] == np.argmin(lr.predict_proba(df)[:, -1])
+
+assert (environment.population_.data.dtypes == environment.population.data.dtypes).all()
