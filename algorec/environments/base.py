@@ -10,6 +10,9 @@ class BaseEnvironment(ABC):
     Define the constraints in the environment. The central piece of the
     multi-agent analysis of algorithmic recourse.
 
+    ``random_state`` is only relevant if ``adaptation_type = 'binary'``.
+    For a closed environment (no new agents) define ``growth_rate = 0``.
+
     Some relevant parameters will include:
     - [x] Population
     - [x] Decision model (not necessary)
@@ -41,28 +44,42 @@ class BaseEnvironment(ABC):
         self,
         population,
         recourse,
-        threshold=0.5,
+        threshold: float = 0.5,
+        threshold_type: str = "fixed",
         adaptation: Union[float, np.ndarray, pd.Series] = 1.0,
-        growth_rate=0.0,
+        adaptation_type: str = "continuous",
+        growth_rate: float = 1.0,
+        remove_winners: bool = True,
+        random_state=None,
     ):
         self.population = population
         self.recourse = recourse
         self.threshold = threshold
+        self.threshold_type = threshold_type
         self.adaptation = adaptation
+        self.adaptation_type = adaptation_type
         self.growth_rate = growth_rate
+        self.remove_winners = remove_winners
+        self.random_state = random_state
 
         self._check()
         self.save_metadata()
 
     def _check(self):
-        # the original population parameter should not be modified
+        # the original parameters must should not be changed
         if not hasattr(self, "population_"):
             self.population_ = deepcopy(self.population)
 
         if not hasattr(self, "step_"):
             self.step_ = 0
 
+        if not hasattr(self, "threshold_"):
+            self._update_threshold()
+
         if not hasattr(self, "adaptation_"):
+            if self.adaptation_type not in ["binary", "continuous"]:
+                raise NotImplementedError()
+
             if type(self.adaptation) in [int, float]:
                 self.adaptation_ = pd.Series(
                     self.adaptation, index=self.population_.data.index
@@ -70,9 +87,31 @@ class BaseEnvironment(ABC):
             else:
                 raise NotImplementedError()
 
+        if not hasattr(self, "_max_id"):
+            self._max_id = self.population_.data.index.max()
+
         if not hasattr(self, "model_"):
             self.model_ = deepcopy(self.recourse.model)
 
+        if not hasattr(self, "_rng"):
+            self._rng = np.random.default_rng(self.random_state)
+
+    def _update_threshold(self):
+        if self.threshold_type == "dynamic":
+            index = int(np.round(self.threshold * self.population_.data.shape[0]))
+            probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
+            self.threshold_ = probabilities[np.argsort(probabilities)][index]
+        elif self.threshold_type == "fixed":
+            self.threshold_ = self.threshold
+        elif self.threshold_type not in ["fixed", "dynamic"]:
+            raise NotImplementedError()
+        return self
+
+    def _update_adaptation(self):
+        if self.adaptation_type == "binary":
+            self.adaptation_ = self._rng.binomial(
+                1, self.adaptation, self.population_.data.shape[0]
+            )
         return self
 
     def predict(self, population=None):
@@ -86,7 +125,7 @@ class BaseEnvironment(ABC):
         # Output should consider threshold and return a single value per
         # observation
         return (
-            self.model_.predict_proba(population.data)[:, 1] >= self.threshold
+            self.model_.predict_proba(population.data)[:, 1] >= self.threshold_
         ).astype(int)
 
     def counterfactual(self, population=None):
@@ -111,9 +150,12 @@ class BaseEnvironment(ABC):
 
     # @abstractmethod
     def add_agents(self, n_agents):
+        # Generate data
+        # Add info to population
         pass
 
-    def remove_agents(self, indices):
+    def remove_agents(self, mask):
+        indices = np.where(~mask.astype(bool))[0]
         self.population_.data = self.population_.data.iloc[indices]
         self.adaptation_ = self.adaptation_.iloc[indices]
         return self
@@ -129,6 +171,7 @@ class BaseEnvironment(ABC):
         self.metadata_[self.step_] = {
             "population": deepcopy(self.population_),
             "adaptation": deepcopy(self.adaptation_),
+            "threshold": self.threshold_,
         }
 
     def update(self):
@@ -146,17 +189,23 @@ class BaseEnvironment(ABC):
         n_agents = self.population_.data.shape[0]
 
         # Remove agents with favorable outcome from previous step
-        outcome = self.predict()
-        indices = np.where(~outcome.astype(bool))[0]
-        self.remove_agents(indices)
+        if self.remove_winners:
+            outcome = self.predict()
+            self.remove_agents(outcome)
+
+        n_removed = np.sum(outcome) if self.remove_winners else 0
 
         # Get factuals + counterfactuals
         factuals = self.population_.data
         counterfactuals = self.counterfactual()
 
         # Get adaptation rate for all agents
-        # This part is tricky; How can this be achieved properly?
-        cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
+        if self.adaptation_type == "binary":
+            cf_vectors = counterfactuals - factuals
+        elif self.adaptation_type == "continuous":
+            cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
+        else:
+            raise NotImplementedError()
 
         # Update existing agents' feature values
         new_factuals = factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
@@ -164,10 +213,13 @@ class BaseEnvironment(ABC):
 
         # Add new agents (replace removed agents and add new agents according
         # to growth rate)
-        n_new_agents = np.round(n_agents * self.growth_rate + indices.shape[0])
-        self.add_agents(n_new_agents)
+        if self.growth_rate != 0:
+            n_new_agents = np.round(n_agents * (self.growth_rate - 1) + n_removed)
+            self.add_agents(n_new_agents)
 
-        # Update metadata and step number
+        # Update variables, metadata and step number
+        self._update_adaptation()
+        self._update_threshold()
         self.step_ += 1
         self.save_metadata()
 
