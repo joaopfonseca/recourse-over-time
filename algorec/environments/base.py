@@ -4,6 +4,8 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 
+from ..visualization import EnvironmentPlot
+
 
 class BaseEnvironment(ABC):
     """
@@ -62,6 +64,7 @@ class BaseEnvironment(ABC):
         self.remove_winners = remove_winners
         self.random_state = random_state
 
+        self.plot = EnvironmentPlot(self, random_state=random_state)
         self._check()
         self.save_metadata()
 
@@ -100,7 +103,6 @@ class BaseEnvironment(ABC):
         return self
 
     def _update_adaptation(self):
-
         if self.adaptation_type == "continuous":
             adaptation = self.adaptation
         elif self.adaptation_type == "binary":
@@ -151,7 +153,7 @@ class BaseEnvironment(ABC):
         # Compute euclidean distance for each agent
         return cf_vectors
 
-    # @abstractmethod
+    @abstractmethod
     def add_agents(self, n_agents):
         # Generate data
         # Add info to population

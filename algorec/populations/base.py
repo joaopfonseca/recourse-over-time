@@ -42,7 +42,7 @@ class BasePopulation(ABC):
     - [x] immutable features
     - [x] step direction
     - [x] Definition the action set internally
-    - [] Amount of new Agents per update
+    - [x] Amount of new Agents per update
     - [] Amount of Agents with an adverse outcome that give up (leave the
       Population)
     - [] Generator (for new agents)

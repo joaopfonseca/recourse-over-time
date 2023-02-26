@@ -5,6 +5,9 @@ prettytable
 matplotlib
 seaborn
 
-
+# Dev
 flake8
 black
+
+# Optional
+ml-research
