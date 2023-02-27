@@ -12,8 +12,8 @@ class BaseEnvironment(ABC):
     Define the constraints in the environment. The central piece of the
     multi-agent analysis of algorithmic recourse.
 
-    ``random_state`` is only relevant if ``adaptation_type = 'binary'``.
-    For a closed environment (no new agents) define ``growth_rate = 0``.
+    ``random_state`` is only relevant for visualizations or if
+    ``adaptation_type = 'binary'``. For a closed environment (no new agents) define ``growth_rate = 0``.
 
     Some relevant parameters will include:
     - [x] Population

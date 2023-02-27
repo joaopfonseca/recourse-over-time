@@ -1,5 +1,38 @@
+from typing import Union
+import numpy as np
 import pandas as pd
 from .base import BaseEnvironment
+
+
+class ClosedEnvironment(BaseEnvironment):
+    """Closed, general-purpose environment"""
+
+    def __init__(
+        self,
+        population,
+        recourse,
+        threshold: float = 0.5,
+        threshold_type: str = "fixed",
+        adaptation: Union[float, np.ndarray, pd.Series] = 1.0,
+        adaptation_type: str = "continuous",
+        growth_rate: float = 1.0,
+        remove_winners: bool = True,
+        random_state=None,
+    ):
+        super().__init__(
+            population=population,
+            recourse=recourse,
+            threshold=threshold,
+            threshold_type=threshold_type,
+            adaptation=adaptation,
+            adaptation_type=adaptation_type,
+            growth_rate=growth_rate,
+            remove_winners=remove_winners,
+            random_state=random_state,
+        )
+
+    def add_agents(self, n_agents):
+        pass
 
 
 class BankLoanApplication(BaseEnvironment):
