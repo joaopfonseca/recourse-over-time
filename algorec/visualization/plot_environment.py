@@ -132,31 +132,28 @@ class EnvironmentPlot:
 
         prob = self.mesh_
 
-        # dx = (self.mesh_x[1]-self.mesh_x[0])/2.
-        # dy = (self.mesh_y[1]-self.mesh_y[0])/2.
-        # extent = [
-        #     self.mesh_x[0]-dx,
-        #     self.mesh_x[-1]+dx,
-        #     self.mesh_y[0]-dy,
-        #     self.mesh_y[-1]+dy
-        # ]
-        # ax.imshow(prob, extent=extent)
-
         ax.contourf(self.mesh_x, self.mesh_y, prob, levels=100, alpha=0.5, cmap="Blues")
 
         # Visualize agents
         if df_prev is not None:
             idx = df.index.intersection(df_prev.index)
+            move = (df.loc[idx] != df_prev.loc[idx]).all(1)
             ax.plot(
-                [df_prev.loc[idx].iloc[:, 0], df.loc[idx].iloc[:, 0]],
-                [df_prev.loc[idx].iloc[:, 1], df.loc[idx].iloc[:, 1]],
+                [
+                    df_prev.loc[idx].loc[move].iloc[:, 0],
+                    df.loc[idx].loc[move].iloc[:, 0]
+                ],
+                [
+                    df_prev.loc[idx].loc[move].iloc[:, 1],
+                    df.loc[idx].loc[move].iloc[:, 1]
+                ],
                 color="gray",
                 alpha=0.5,
                 zorder=1,
             )
             ax.scatter(
-                x=df_prev.loc[idx].iloc[:, 0],
-                y=df_prev.loc[idx].iloc[:, 1],
+                x=df_prev.loc[idx].loc[move].iloc[:, 0],
+                y=df_prev.loc[idx].loc[move].iloc[:, 1],
                 alpha=0.3,
                 color=self._previous,
                 label="Prev. position" if legend else None,
@@ -166,12 +163,14 @@ class EnvironmentPlot:
             x=df.iloc[~mask, 0],
             y=df.iloc[~mask, 1],
             color=self._unfavorable,
+            alpha=0.5,
             label="Unfavorable" if legend else None,
         )
         ax.scatter(
             x=df.iloc[mask, 0],
             y=df.iloc[mask, 1],
             color=self._favorable,
+            alpha=0.5,
             label="Favorable" if legend else None,
         )
         if legend:

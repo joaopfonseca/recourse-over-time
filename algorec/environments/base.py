@@ -13,7 +13,8 @@ class BaseEnvironment(ABC):
     multi-agent analysis of algorithmic recourse.
 
     ``random_state`` is only relevant for visualizations or if
-    ``adaptation_type = 'binary'``. For a closed environment (no new agents) define ``growth_rate = 0``.
+    ``adaptation_type = 'binary'``. For a closed environment (no new agents) define
+    ``growth_rate = 0``.
 
     Some relevant parameters will include:
     - [x] Population
@@ -237,3 +238,18 @@ class BaseEnvironment(ABC):
         for i in range(n_steps):
             self.update()
         return self
+
+    def success_rate(self, step, last_step=None):
+        steps = [step] if last_step is None else [s for s in range(step, last_step)]
+        success_rates = []
+        for step in steps:
+            adapted = self.metadata_[step]["adaptation"] > 0
+            favorable_y = (
+                self.model_.predict_proba(self.metadata_[step]["population"].data)[:, 1]
+                >= self.metadata_[step]["threshold"]
+            ).astype(int)
+            success = favorable_y[adapted]
+            success_rate = success.sum() / success.shape[0]
+            print(success.sum(), success.shape[0])
+            success_rates.append(success_rate)
+        return np.array(success_rates)
