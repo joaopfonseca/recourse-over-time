@@ -15,7 +15,6 @@ class ClosedEnvironment(BaseEnvironment):
         threshold_type: str = "fixed",
         adaptation: Union[float, np.ndarray, pd.Series] = 1.0,
         adaptation_type: str = "continuous",
-        growth_rate: float = 1.0,
         remove_winners: bool = True,
         random_state=None,
     ):
@@ -26,7 +25,6 @@ class ClosedEnvironment(BaseEnvironment):
             threshold_type=threshold_type,
             adaptation=adaptation,
             adaptation_type=adaptation_type,
-            growth_rate=growth_rate,
             remove_winners=remove_winners,
             random_state=random_state,
         )

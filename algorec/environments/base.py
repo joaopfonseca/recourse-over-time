@@ -94,13 +94,16 @@ class BaseEnvironment(ABC):
 
     def _update_threshold(self):
         if self.threshold_type == "dynamic":
-            index = int(np.round(self.threshold * self.population_.data.shape[0]))
+            self.threshold_index_ = int(np.round(self.threshold * self.population_.data.shape[0]))
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
-            self.threshold_ = probabilities[np.argsort(probabilities)][index]
+            self.threshold_ = probabilities[np.argsort(probabilities)][self.threshold_index_]
+
         elif self.threshold_type == "fixed":
             self.threshold_ = self.threshold
+
         elif self.threshold_type not in ["fixed", "dynamic"]:
             raise NotImplementedError()
+
         return self
 
     def _update_adaptation(self):
@@ -116,19 +119,35 @@ class BaseEnvironment(ABC):
         self.adaptation_ = pd.Series(adaptation, index=self.population_.data.index)
         return self
 
-    def predict(self, population=None):
+    def predict(self, population=None, step=None):
         """
         Produces the outcomes for a single agent or a population.
         """
 
-        if population is None:
-            population = self.population_
+        if step is None:
+            threshold = self.threshold_
+            if self.threshold_type == "dynamic":
+                threshold_idx = self.threshold_index_
+            if population is None:
+                population = self.population_
+        else:
+            threshold = self.metadata_[step]["threshold"]
+            if self.threshold_type == "dynamic":
+                threshold_idx = self.metadata_[step]["threshold_index"]
+            if population is None:
+                population = self.metadata_[step]["population"]
 
         # Output should consider threshold and return a single value per
         # observation
-        return (
-            self.model_.predict_proba(population.data)[:, 1] >= self.threshold_
-        ).astype(int)
+        probs = self.model_.predict_proba(population.data)[:, 1]
+        if self.threshold_type == "dynamic":
+            pred = np.zeros(probs.shape, dtype=int)
+            idx = np.argsort(probs)[threshold_idx:]
+            pred[idx] = 1
+        else:
+            pred = (probs >= threshold).astype(int)
+
+        return pred
 
     def counterfactual(self, population=None):
         """
@@ -179,6 +198,8 @@ class BaseEnvironment(ABC):
             "adaptation": deepcopy(self.adaptation_),
             "threshold": self.threshold_,
         }
+        if self.threshold_type == "dynamic":
+            self.metadata_[self.step_]["threshold_index"] = self.threshold_index_
 
     def update(self):
         """
@@ -244,10 +265,7 @@ class BaseEnvironment(ABC):
         success_rates = []
         for step in steps:
             adapted = self.metadata_[step]["adaptation"] > 0
-            favorable_y = (
-                self.model_.predict_proba(self.metadata_[step]["population"].data)[:, 1]
-                >= self.metadata_[step]["threshold"]
-            ).astype(int)
+            favorable_y = self.predict(step=step)
             success = favorable_y[adapted]
             success_rate = success.sum() / success.shape[0]
             print(success.sum(), success.shape[0])

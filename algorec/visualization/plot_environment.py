@@ -26,18 +26,18 @@ class EnvironmentPlot:
         self.is_large_dim = X.shape[-1] > 2
 
         if self.is_large_dim:
-            self.autoencoder = MLPRegressor(
+            self._autoencoder = MLPRegressor(
                 hidden_layer_sizes=(2,),
                 activation="identity",
                 max_iter=1000,
                 random_state=self.random_state,
             )
-            self.autoencoder.fit(X, X)
+            self._autoencoder.fit(X, X)
 
             X = pd.DataFrame(
                 (
-                    np.dot(X.values, self.autoencoder.coefs_[0])
-                    + self.autoencoder.intercepts_[0]
+                    np.dot(X.values, self._autoencoder.coefs_[0])
+                    + self._autoencoder.intercepts_[0]
                 ),
                 index=X.index,
                 columns=["Component 1", "Component 2"],
@@ -52,8 +52,8 @@ class EnvironmentPlot:
 
         X_ = pd.DataFrame(
             (
-                np.dot(X_curr.values, self.autoencoder.coefs_[0])
-                + self.autoencoder.intercepts_[0]
+                np.dot(X_curr.values, self._autoencoder.coefs_[0])
+                + self._autoencoder.intercepts_[0]
             ),
             index=X_curr.index,
             columns=["Component 1", "Component 2"],
@@ -79,8 +79,8 @@ class EnvironmentPlot:
 
         if self.is_large_dim:
             mesh = (
-                np.dot(mesh, self.autoencoder.coefs_[1])
-                + self.autoencoder.intercepts_[1]
+                np.dot(mesh, self._autoencoder.coefs_[1])
+                + self._autoencoder.intercepts_[1]
             )
 
         mesh = self.environment.model_.predict_proba(
@@ -91,7 +91,7 @@ class EnvironmentPlot:
 
     def scatter(self, step=None, mesh_size=(100, 100), legend=True, title=True):
         """Visualize the population in a 2d-scatter plot."""
-        if not hasattr(self, "autoencoder"):
+        if not hasattr(self, "_autoencoder"):
             self.fit()
 
         if step is None:
@@ -100,16 +100,16 @@ class EnvironmentPlot:
         df = self.environment.metadata_[step]["population"].data
         if step > 0:
             df_prev = self.environment.metadata_[step - 1]["population"].data
-        threshold = self.environment.metadata_[step]["threshold"]
-        mask = self.environment.model_.predict_proba(df)[:, -1] >= threshold
+
+        mask = self.environment.predict(step=step).astype(bool)
 
         self._create_mesh_grid(df, mesh_size)
 
         if self.is_large_dim:
             df = pd.DataFrame(
                 (
-                    np.dot(df.values, self.autoencoder.coefs_[0])
-                    + self.autoencoder.intercepts_[0]
+                    np.dot(df.values, self._autoencoder.coefs_[0])
+                    + self._autoencoder.intercepts_[0]
                 ),
                 index=df.index,
                 columns=["Component 1", "Component 2"],
@@ -117,8 +117,8 @@ class EnvironmentPlot:
             df_prev = (
                 pd.DataFrame(
                     (
-                        np.dot(df_prev.values, self.autoencoder.coefs_[0])
-                        + self.autoencoder.intercepts_[0]
+                        np.dot(df_prev.values, self._autoencoder.coefs_[0])
+                        + self._autoencoder.intercepts_[0]
                     ),
                     index=df_prev.index,
                     columns=["Component 1", "Component 2"],
@@ -137,7 +137,7 @@ class EnvironmentPlot:
         # Visualize agents
         if df_prev is not None:
             idx = df.index.intersection(df_prev.index)
-            move = (df.loc[idx] != df_prev.loc[idx]).all(1)
+            move = (df.loc[idx] != df_prev.loc[idx]).any(1)
             ax.plot(
                 [
                     df_prev.loc[idx].loc[move].iloc[:, 0],
@@ -183,7 +183,7 @@ class EnvironmentPlot:
 
     def agent_scores(self, min_step=None, max_step=None, legend=True, title=True):
         """Visualize population scores across multiple time steps."""
-        if not hasattr(self, "autoencoder"):
+        if not hasattr(self, "_autoencoder"):
             self.fit()
 
         df_list = [
@@ -194,10 +194,8 @@ class EnvironmentPlot:
         fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
         for step, df, threshold in df_list:
-            threshold = self.environment.metadata_[step]["threshold"]
-
             prob = self.environment.model_.predict_proba(df)[:, -1]
-            mask = prob >= threshold
+            mask = self.environment.predict(step=step).astype(bool)
 
             # Set up x coordinates to form swarm plots
             x = np.ones(df.shape[0], dtype=int) * step
