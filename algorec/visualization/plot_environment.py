@@ -49,15 +49,17 @@ class EnvironmentPlot:
         return self
 
     def _create_mesh_grid(self, X_curr, mesh_size):
-
-        X_ = pd.DataFrame(
-            (
-                np.dot(X_curr.values, self._autoencoder.coefs_[0])
-                + self._autoencoder.intercepts_[0]
-            ),
-            index=X_curr.index,
-            columns=["Component 1", "Component 2"],
-        )
+        if self.is_large_dim:
+            X_ = pd.DataFrame(
+                (
+                    np.dot(X_curr.values, self._autoencoder.coefs_[0])
+                    + self._autoencoder.intercepts_[0]
+                ),
+                index=X_curr.index,
+                columns=["Component 1", "Component 2"],
+            )
+        else:
+            X_ = X_curr.copy()
         _min_x_curr = X_.min(0)
         _max_x_curr = X_.max(0)
 
@@ -101,10 +103,11 @@ class EnvironmentPlot:
         if step > 0:
             df_prev = self.environment.metadata_[step - 1]["population"].data
 
-        mask = self.environment.predict(step=step).astype(bool)
+        outcome = self.environment.predict(step=step).astype(bool)
 
         self._create_mesh_grid(df, mesh_size)
 
+        # Project data into 2 dimensions
         if self.is_large_dim:
             df = pd.DataFrame(
                 (
@@ -135,40 +138,42 @@ class EnvironmentPlot:
         ax.contourf(self.mesh_x, self.mesh_y, prob, levels=100, alpha=0.5, cmap="Blues")
 
         # Visualize agents
-        if df_prev is not None:
-            idx = df.index.intersection(df_prev.index)
-            move = (df.loc[idx] != df_prev.loc[idx]).any(1)
+        if step > 0:
+            # idx = df.index.intersection(df_prev.index)
+            # move = np.any(df.loc[idx] != df_prev.loc[idx], axis=1)
+            move = self.environment._get_moving_agents(step)
+
+            # Plot movement lines
             ax.plot(
-                [
-                    df_prev.loc[idx].loc[move].iloc[:, 0],
-                    df.loc[idx].loc[move].iloc[:, 0]
-                ],
-                [
-                    df_prev.loc[idx].loc[move].iloc[:, 1],
-                    df.loc[idx].loc[move].iloc[:, 1]
-                ],
+                [df_prev.loc[move].iloc[:, 0], df.loc[move].iloc[:, 0]],
+                [df_prev.loc[move].iloc[:, 1], df.loc[move].iloc[:, 1]],
                 color="gray",
                 alpha=0.5,
                 zorder=1,
             )
+
+            # Plot previous location for moving agents
             ax.scatter(
-                x=df_prev.loc[idx].loc[move].iloc[:, 0],
-                y=df_prev.loc[idx].loc[move].iloc[:, 1],
+                x=df_prev.loc[move].iloc[:, 0],
+                y=df_prev.loc[move].iloc[:, 1],
                 alpha=0.3,
                 color=self._previous,
                 label="Prev. position" if legend else None,
             )
 
+        # Plot all current agents with unfavorable outcome
         ax.scatter(
-            x=df.iloc[~mask, 0],
-            y=df.iloc[~mask, 1],
+            x=df.iloc[~outcome.values, 0],
+            y=df.iloc[~outcome.values, 1],
             color=self._unfavorable,
             alpha=0.5,
             label="Unfavorable" if legend else None,
         )
+
+        # Plot all current agents with favorable outcome
         ax.scatter(
-            x=df.iloc[mask, 0],
-            y=df.iloc[mask, 1],
+            x=df.iloc[outcome.values, 0],
+            y=df.iloc[outcome.values, 1],
             color=self._favorable,
             alpha=0.5,
             label="Favorable" if legend else None,
@@ -195,7 +200,7 @@ class EnvironmentPlot:
 
         for step, df, threshold in df_list:
             prob = self.environment.model_.predict_proba(df)[:, -1]
-            mask = self.environment.predict(step=step).astype(bool)
+            outcome = self.environment.predict(step=step).astype(bool)
 
             # Set up x coordinates to form swarm plots
             x = np.ones(df.shape[0], dtype=int) * step
@@ -204,15 +209,15 @@ class EnvironmentPlot:
             add_labels = legend and step in [min_step, 0]
 
             ax.scatter(
-                x=x[~mask],
-                y=prob[~mask],
+                x=x[~outcome.values],
+                y=prob[~outcome.values],
                 color=self._unfavorable,
                 alpha=0.5,
                 label=("Unfavorable" if add_labels else None),
             )
             ax.scatter(
-                x=x[mask],
-                y=prob[mask],
+                x=x[outcome.values],
+                y=prob[outcome.values],
                 color=self._favorable,
                 alpha=0.5,
                 label=("Favorable" if add_labels else None),
@@ -235,3 +240,34 @@ class EnvironmentPlot:
         ax.set_ylabel("Score")
 
         return fig, ax
+
+    def scores_histogram(self, step=None, **kwargs):
+        """
+        Plots the histogram of the scores at ``step``.
+
+        See documentation for plt.hist in order to pass kwargs
+        """
+        if step is None:
+            step = self.environment.step_
+
+        return plt.hist(
+            self.environment.model_.predict_proba(
+                self.environment.metadata_[step]["population"].data
+            )[:, -1],
+            **kwargs,
+        )
+
+    def scores_kde(self, step=None, **kwargs):
+        """
+        Plots the KDE of the scores at ``step`` using Gaussian kernels.
+
+        See documentation for pandas.DataFrame.plot.kde in order to pass kwargs
+        """
+        if step is None:
+            step = self.environment.step_
+
+        return pd.Series(
+            self.environment.model_.predict_proba(
+                self.environment.metadata_[step]["population"].data
+            )[:, -1]
+        ).plot.kde(**kwargs)

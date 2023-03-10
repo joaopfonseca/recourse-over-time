@@ -42,6 +42,6 @@ def swarm(y, nbins=None):
             x[a] = (0.5 + j / 3 + np.arange(len(b))) * dx
             x[b] = (0.5 + j / 3 + np.arange(len(b))) * -dx
 
-    x = (x - x.min()) / (x.max() - x.min()) - 0.5
+    x = ((x - x.min()) / (x.max() - x.min())) * 0.8 - 0.4
 
     return x

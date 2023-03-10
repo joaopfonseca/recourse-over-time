@@ -67,10 +67,10 @@ class BaseEnvironment(ABC):
 
         self.plot = EnvironmentPlot(self, random_state=random_state)
         self._check()
-        self.save_metadata()
+        self._save_metadata()
 
     def _check(self):
-        # the original parameters must should not be changed
+        # the original parameters must not be changed
         if not hasattr(self, "population_"):
             self.population_ = deepcopy(self.population)
 
@@ -89,14 +89,21 @@ class BaseEnvironment(ABC):
         if not hasattr(self, "adaptation_"):
             self._update_adaptation()
 
+        if not hasattr(self, "outcome_"):
+            self.outcome_ = self.predict()
+
         if not hasattr(self, "_max_id"):
             self._max_id = self.population_.data.index.max()
 
     def _update_threshold(self):
         if self.threshold_type == "dynamic":
-            self.threshold_index_ = int(np.round(self.threshold * self.population_.data.shape[0]))
+            self.threshold_index_ = int(
+                np.round(self.threshold * self.population_.data.shape[0])
+            )
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
-            self.threshold_ = probabilities[np.argsort(probabilities)][self.threshold_index_]
+            self.threshold_ = probabilities[np.argsort(probabilities)][
+                self.threshold_index_
+            ]
 
         elif self.threshold_type == "fixed":
             self.threshold_ = self.threshold
@@ -122,6 +129,8 @@ class BaseEnvironment(ABC):
     def predict(self, population=None, step=None):
         """
         Produces the outcomes for a single agent or a population.
+
+        TODO: REFACTOR if statement
         """
 
         if step is None:
@@ -147,17 +156,22 @@ class BaseEnvironment(ABC):
         else:
             pred = (probs >= threshold).astype(int)
 
-        return pred
+        return pd.Series(pred, index=population.data.index)
 
-    def counterfactual(self, population=None):
+    def counterfactual(self, population=None, step=None):
         """
         Get the counterfactual examples.
         """
-        if population is None:
+        if population is None and step is None:
             population = self.population_
+        elif population is None:
+            population = self.metadata_[step]["population"]
 
         # Ensure threshold is up-to-date
-        self.recourse.threshold = self.threshold_
+        if step is None:
+            self.recourse.threshold = self.threshold_
+        else:
+            self.recourse.threshold = self.metadata_[step]["threshold"]
 
         return self.recourse.counterfactual(population)
 
@@ -185,7 +199,7 @@ class BaseEnvironment(ABC):
         self.adaptation_ = self.adaptation_.iloc[indices]
         return self
 
-    def save_metadata(self):
+    def _save_metadata(self):
         """
         Store metadata for each step. Currently incomplete.
         """
@@ -196,6 +210,7 @@ class BaseEnvironment(ABC):
         self.metadata_[self.step_] = {
             "population": deepcopy(self.population_),
             "adaptation": deepcopy(self.adaptation_),
+            "outcome": self.outcome_,
             "threshold": self.threshold_,
         }
         if self.threshold_type == "dynamic":
@@ -217,10 +232,9 @@ class BaseEnvironment(ABC):
 
         # Remove agents with favorable outcome from previous step
         if self.remove_winners:
-            outcome = self.predict()
-            self.remove_agents(outcome)
+            self.remove_agents(self.outcome_)
 
-        n_removed = np.sum(outcome) if self.remove_winners else 0
+        n_removed = np.sum(self.outcome_) if self.remove_winners else 0
 
         # Get factuals + counterfactuals
         factuals = self.population_.data
@@ -244,11 +258,16 @@ class BaseEnvironment(ABC):
             n_new_agents = int(np.round(n_agents * (self.growth_rate - 1) + n_removed))
             self.add_agents(n_new_agents)
 
-        # Update variables, metadata and step number
+        # Update variables
         self._update_adaptation()
         self._update_threshold()
+
+        # Determine outcome of current step
+        self.outcome_ = self.predict()
+
+        # Update metadata and step number
         self.step_ += 1
-        self.save_metadata()
+        self._save_metadata()
 
         return self
 
@@ -260,14 +279,62 @@ class BaseEnvironment(ABC):
             self.update()
         return self
 
+    def _get_moving_agents(self, step):
+        """Get indices of agents that adapted between ``step-1`` and ``step``."""
+        if step == 0:
+            raise IndexError("Agents cannot move at the initial state (``step=0``).")
+
+        adapted = (
+            (self.metadata_[step - 1]["adaptation"] > 0)
+            & (~self.metadata_[step - 1]["outcome"].astype(bool))
+            & (
+                self.model_.predict_proba(self.metadata_[step - 1]["population"].data)[
+                    :, 1
+                ]
+                < self.metadata_[step - 1]["threshold"]
+            )
+        )
+        return adapted[adapted].index.values
+
     def success_rate(self, step, last_step=None):
+        """
+        For an agent to move, they need to have adaptation > 0, unfavorable outcome and
+        score < threshold.
+
+        If nan, no agents adapted (thus no rate is calculated).
+        """
+        if step == 0:
+            raise IndexError(
+                "Cannot calculate success rate at ``step=0`` (agents have not started "
+                "moving)."
+            )
+
         steps = [step] if last_step is None else [s for s in range(step, last_step)]
         success_rates = []
         for step in steps:
-            adapted = self.metadata_[step]["adaptation"] > 0
-            favorable_y = self.predict(step=step)
-            success = favorable_y[adapted]
-            success_rate = success.sum() / success.shape[0]
-            print(success.sum(), success.shape[0])
+            adapted = self._get_moving_agents(step)
+            outcomes = self.metadata_[step]["outcome"].astype(bool)
+            favorable_outcomes = (
+                self.metadata_[step]["population"].data.loc[outcomes].index
+            )
+
+            # USED FOR AUDITING CODE
+            # print(f"step: {step} | total_fav: {favorable_indices.shape[0]}")
+            # print("adaptation # (from metadata):", moved_indices.shape[0])
+            # if step != 0:
+            #     df = self.metadata_[step]["population"].data
+            #     df_prev = self.metadata_[step-1]["population"].data
+            #     idx = df.index.intersection(df_prev.index)
+            #     move = np.any(df.loc[idx] != df_prev.loc[idx], axis=1)
+            #     print("adaptation # (from visualization):", move.sum())
+
+            success = favorable_outcomes.intersection(adapted)
+            success_rate = (
+                success.shape[0] / adapted.shape[0] if adapted.shape[0] > 0 else np.nan
+            )
+
+            # USED FOR ADITING CODE
+            # print(
+            # f"moved+favorable: {success.shape[0]} | moved: {moved_indices.shape[0]}\n")
             success_rates.append(success_rate)
         return np.array(success_rates)
