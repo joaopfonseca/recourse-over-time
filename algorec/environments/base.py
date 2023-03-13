@@ -23,20 +23,24 @@ class BaseEnvironment(ABC):
         * Could be defined as a function?
     - [x] Algorithmic Recourse method
     - [x] Distribution of Agents' percentage of adaptation
-    - [] Define how this percentage changes over time:
+    - [ ] Define how this percentage changes over time:
         * Increase rate: over time people get more motivated to move towards
           counterfactual
         * Decrease rate: over time people lose motivation to move towards
           counterfactual until they eventually give up
         * Mixed: Some people get more motivation, others lose it.
-    - [] Add verbosity
+    - [ ] Add verbosity
 
     Parameters:
     - population: ``Population`` object containing the Agents' information
     - recourse: Recourse method that allows the production of counterfactuals
     - adaptation: Rate of adaptation of Agents towards their counterfactuals
+    - adaptation_type: can be binary or stepwise
     - threshold: probability threshold to consider an agent's outcome as
       favorable/unfavorable
+    - threshold_type: can be fixed, dynamic or absolute
+    - growth_rate_type: can be absolute or relative
+    - remove_winners: can be True, False
 
     Attributes:
     - Current step
@@ -50,8 +54,9 @@ class BaseEnvironment(ABC):
         threshold: float = 0.5,
         threshold_type: str = "fixed",
         adaptation: Union[float, np.ndarray, pd.Series] = 1.0,
-        adaptation_type: str = "continuous",
-        growth_rate: float = 1.0,
+        adaptation_type: str = "stepwise",
+        growth_rate: Union[float, int] = 1.0,
+        growth_rate_type: str = "dynamic",
         remove_winners: bool = True,
         random_state=None,
     ):
@@ -62,6 +67,7 @@ class BaseEnvironment(ABC):
         self.adaptation = adaptation
         self.adaptation_type = adaptation_type
         self.growth_rate = growth_rate
+        self.growth_rate_type = growth_rate_type
         self.remove_winners = remove_winners
         self.random_state = random_state
 
@@ -79,6 +85,9 @@ class BaseEnvironment(ABC):
 
         if not hasattr(self, "model_"):
             self.model_ = deepcopy(self.recourse.model)
+
+        if not hasattr(self, "growth_k_"):
+            self._update_growth_rate()
 
         if not hasattr(self, "threshold_"):
             self._update_threshold()
@@ -105,16 +114,25 @@ class BaseEnvironment(ABC):
                 self.threshold_index_
             ]
 
+        elif self.threshold_type == "absolute":
+            self.threshold_index_ = self.population_.data.shape[0] - self.threshold
+            if self.threshold_index_ < 0:
+                raise KeyError("Threshold cannot be larger than the population.")
+            probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
+            self.threshold_ = probabilities[np.argsort(probabilities)][
+                self.threshold_index_
+            ]
+
         elif self.threshold_type == "fixed":
             self.threshold_ = self.threshold
 
-        elif self.threshold_type not in ["fixed", "dynamic"]:
+        else:
             raise NotImplementedError()
 
         return self
 
     def _update_adaptation(self):
-        if self.adaptation_type == "continuous":
+        if self.adaptation_type == "stepwise":
             adaptation = self.adaptation
         elif self.adaptation_type == "binary":
             adaptation = self._rng.binomial(
@@ -126,11 +144,18 @@ class BaseEnvironment(ABC):
         self.adaptation_ = pd.Series(adaptation, index=self.population_.data.index)
         return self
 
+    def _update_growth_rate(self):
+        if self.growth_rate_type == "absolute":
+            self.growth_k_ = self.growth_rate
+        elif self.growth_rate_type == "relative":
+            self.growth_k_ = self.population_.data.shape[0] * self.growth_rate
+        return self
+
     def predict(self, population=None, step=None):
         """
         Produces the outcomes for a single agent or a population.
 
-        TODO: REFACTOR if statement
+        TODO: Refactor if statement
         """
 
         if step is None:
@@ -212,6 +237,7 @@ class BaseEnvironment(ABC):
             "adaptation": deepcopy(self.adaptation_),
             "outcome": self.outcome_,
             "threshold": self.threshold_,
+            "growth_k": self.growth_k_,
         }
         if self.threshold_type == "dynamic":
             self.metadata_[self.step_]["threshold_index"] = self.threshold_index_
@@ -227,14 +253,9 @@ class BaseEnvironment(ABC):
         - Remove Agents with adverse outcomes that would give up
         """
 
-        # Save number of agents in population
-        n_agents = self.population_.data.shape[0]
-
         # Remove agents with favorable outcome from previous step
         if self.remove_winners:
             self.remove_agents(self.outcome_)
-
-        n_removed = np.sum(self.outcome_) if self.remove_winners else 0
 
         # Get factuals + counterfactuals
         factuals = self.population_.data
@@ -243,7 +264,7 @@ class BaseEnvironment(ABC):
         # Get adaptation rate for all agents
         if self.adaptation_type == "binary":
             cf_vectors = counterfactuals - factuals
-        elif self.adaptation_type == "continuous":
+        elif self.adaptation_type == "stepwise":
             cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
         else:
             raise NotImplementedError()
@@ -252,15 +273,15 @@ class BaseEnvironment(ABC):
         new_factuals = factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
         self.population_.data = new_factuals
 
-        # Add new agents (replace removed agents and add new agents according
-        # to growth rate)
+        # Add new agents
         if self.growth_rate != 0:
-            n_new_agents = int(np.round(n_agents * (self.growth_rate - 1) + n_removed))
+            n_new_agents = int(np.round(self.growth_k_))
             self.add_agents(n_new_agents)
 
         # Update variables
         self._update_adaptation()
         self._update_threshold()
+        self._update_growth_rate()
 
         # Determine outcome of current step
         self.outcome_ = self.predict()
@@ -275,7 +296,7 @@ class BaseEnvironment(ABC):
         """
         Simulates ``n`` runs through the environment.
         """
-        for i in range(n_steps):
+        for _ in range(n_steps):
             self.update()
         return self
 
@@ -333,7 +354,7 @@ class BaseEnvironment(ABC):
                 success.shape[0] / adapted.shape[0] if adapted.shape[0] > 0 else np.nan
             )
 
-            # USED FOR ADITING CODE
+            # USED FOR AUDITING CODE
             # print(
             # f"moved+favorable: {success.shape[0]} | moved: {moved_indices.shape[0]}\n")
             success_rates.append(success_rate)

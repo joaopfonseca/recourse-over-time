@@ -1,3 +1,3 @@
-from .environments import BankLoanApplication, ClosedEnvironment
+from .environments import ClosedEnvironment, BankLoanApplication1, BankLoanApplication2
 
-__all__ = ["ClosedEnvironment", "BankLoanApplication"]
+__all__ = ["ClosedEnvironment", "BankLoanApplication1", "BankLoanApplication2"]
