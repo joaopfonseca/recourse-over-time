@@ -271,3 +271,32 @@ class EnvironmentPlot:
                 self.environment.metadata_[step]["population"].data
             )[:, -1]
         ).plot.kde(**kwargs)
+
+    def population_size(
+        self, min_step=None, max_step=None, legend=True, title=True, stacked=True, **kwargs
+    ):
+        """
+        plots the number of agents per time step
+
+        See documentation for pandas.DataFrame.plot.bar in order to pass kwargs
+        """
+
+        pop_list = [
+            (i, metadata["population"].data.shape[0], metadata["outcome"].sum())
+            for i, metadata in self.environment.metadata_.items()
+        ][min_step:max_step]
+
+        df = pd.DataFrame(pop_list, columns=["step", "pop", "favorable"])
+        df.set_index("step", inplace=True)
+        df["unfavorable"] = df["pop"] - df["favorable"]
+        df.drop(columns="pop", inplace=True)
+        ax = df[["unfavorable", "favorable"]].plot.bar(stacked=stacked, **kwargs)
+
+        if title:
+            ax.set_title(f"Population size over {len(pop_list)} time steps")
+        if legend:
+            ax.legend()
+        ax.set_xlabel("Step")
+        ax.set_ylabel("Number of agents")
+
+        return ax

@@ -51,7 +51,7 @@ class BaseEnvironment(ABC):
         self,
         population,
         recourse,
-        threshold: float = 0.5,
+        threshold: Union[float, np.ndarray] = 0.5,
         threshold_type: str = "fixed",
         adaptation: Union[float, np.ndarray, pd.Series] = 1.0,
         adaptation_type: str = "stepwise",
@@ -105,9 +105,15 @@ class BaseEnvironment(ABC):
             self._max_id = self.population_.data.index.max()
 
     def _update_threshold(self):
+        threshold = (
+            self.threshold[self.step_]
+            if type(self.threshold) == np.ndarray
+            else self.threshold
+        )
+
         if self.threshold_type == "dynamic":
             self.threshold_index_ = int(
-                np.round(self.threshold * self.population_.data.shape[0])
+                np.round(threshold * self.population_.data.shape[0])
             )
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
             self.threshold_ = probabilities[np.argsort(probabilities)][
@@ -115,16 +121,16 @@ class BaseEnvironment(ABC):
             ]
 
         elif self.threshold_type == "absolute":
-            self.threshold_index_ = self.population_.data.shape[0] - self.threshold
+            self.threshold_index_ = self.population_.data.shape[0] - threshold
             if self.threshold_index_ < 0:
                 raise KeyError("Threshold cannot be larger than the population.")
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
             self.threshold_ = probabilities[np.argsort(probabilities)][
                 self.threshold_index_
-            ]
+            ] if threshold != 0 else np.nan
 
         elif self.threshold_type == "fixed":
-            self.threshold_ = self.threshold
+            self.threshold_ = threshold
 
         else:
             raise NotImplementedError()
@@ -132,23 +138,35 @@ class BaseEnvironment(ABC):
         return self
 
     def _update_adaptation(self):
+
+        adaptation = (
+            self.adaptation[self.step_]
+            if type(self.adaptation) == np.ndarray
+            else self.adaptation
+        )
+
         if self.adaptation_type == "stepwise":
-            adaptation = self.adaptation
+            pass
         elif self.adaptation_type == "binary":
             adaptation = self._rng.binomial(
-                1, self.adaptation, self.population_.data.shape[0]
+                1, adaptation, self.population_.data.shape[0]
             )
-        else:
-            raise NotImplementedError()
 
         self.adaptation_ = pd.Series(adaptation, index=self.population_.data.index)
         return self
 
     def _update_growth_rate(self):
+
+        growth_rate = (
+            self.growth_rate[self.step_]
+            if type(self.growth_rate) == np.ndarray
+            else self.growth_rate
+        )
+
         if self.growth_rate_type == "absolute":
-            self.growth_k_ = self.growth_rate
+            self.growth_k_ = int(np.round(growth_rate))
         elif self.growth_rate_type == "relative":
-            self.growth_k_ = self.population_.data.shape[0] * self.growth_rate
+            self.growth_k_ = int(np.round(self.population_.data.shape[0] * growth_rate))
         return self
 
     def predict(self, population=None, step=None):
@@ -160,13 +178,13 @@ class BaseEnvironment(ABC):
 
         if step is None:
             threshold = self.threshold_
-            if self.threshold_type == "dynamic":
+            if self.threshold_type in ["dynamic", "absolute"]:
                 threshold_idx = self.threshold_index_
             if population is None:
                 population = self.population_
         else:
             threshold = self.metadata_[step]["threshold"]
-            if self.threshold_type == "dynamic":
+            if self.threshold_type in ["dynamic", "absolute"]:
                 threshold_idx = self.metadata_[step]["threshold_index"]
             if population is None:
                 population = self.metadata_[step]["population"]
@@ -174,7 +192,7 @@ class BaseEnvironment(ABC):
         # Output should consider threshold and return a single value per
         # observation
         probs = self.model_.predict_proba(population.data)[:, 1]
-        if self.threshold_type == "dynamic":
+        if self.threshold_type in ["dynamic", "absolute"]:
             pred = np.zeros(probs.shape, dtype=int)
             idx = np.argsort(probs)[threshold_idx:]
             pred[idx] = 1
@@ -187,18 +205,20 @@ class BaseEnvironment(ABC):
         """
         Get the counterfactual examples.
         """
-        if population is None and step is None:
-            population = self.population_
-        elif population is None:
-            population = self.metadata_[step]["population"]
+        if population is None:
+            population = (
+                self.population_ if step is None else self.metadata_[step]["population"]
+            )
 
         # Ensure threshold is up-to-date
-        if step is None:
-            self.recourse.threshold = self.threshold_
+        threshold = (
+            self.threshold_ if step is None else self.metadata_[step]["threshold"]
+        )
+        if np.isnan(threshold):
+            return population.data
         else:
-            self.recourse.threshold = self.metadata_[step]["threshold"]
-
-        return self.recourse.counterfactual(population)
+            self.recourse.threshold = threshold
+            return self.recourse.counterfactual(population)
 
     def _counterfactual_vectors(self, factuals, counterfactuals):
         # Compute avg distance to counterfactual
@@ -239,7 +259,7 @@ class BaseEnvironment(ABC):
             "threshold": self.threshold_,
             "growth_k": self.growth_k_,
         }
-        if self.threshold_type == "dynamic":
+        if self.threshold_type in ["dynamic", "absolute"]:
             self.metadata_[self.step_]["threshold_index"] = self.threshold_index_
 
     def update(self):
@@ -274,9 +294,7 @@ class BaseEnvironment(ABC):
         self.population_.data = new_factuals
 
         # Add new agents
-        if self.growth_rate != 0:
-            n_new_agents = int(np.round(self.growth_k_))
-            self.add_agents(n_new_agents)
+        self.add_agents(self.growth_k_)
 
         # Update variables
         self._update_adaptation()
@@ -326,8 +344,8 @@ class BaseEnvironment(ABC):
         """
         if step == 0:
             raise IndexError(
-                "Cannot calculate success rate at ``step=0`` (agents have not started "
-                "moving)."
+                "Cannot calculate success rate at ``step=0`` (agents have not adapted "
+                "yet)."
             )
 
         steps = [step] if last_step is None else [s for s in range(step, last_step)]
@@ -359,3 +377,18 @@ class BaseEnvironment(ABC):
             # f"moved+favorable: {success.shape[0]} | moved: {moved_indices.shape[0]}\n")
             success_rates.append(success_rate)
         return np.array(success_rates)
+
+    def threshold_drift(self, step, last_step=None):
+        """Calculate threshold variations across"""
+
+        if step == 0:
+            raise IndexError("Cannot threshold drift at ``step=0``.")
+
+        steps = [step] if last_step is None else [s for s in range(step, last_step)]
+        steps = [step-1] + steps
+        thresholds = [self.metadata_[step]["threshold"] for step in steps]
+        threshold_drift = [
+            (thresholds[i] - thresholds[i-1]) / thresholds[i-1]
+            for i in range(1, len(thresholds))
+        ]
+        return np.array(threshold_drift)
