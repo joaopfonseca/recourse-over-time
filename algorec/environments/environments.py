@@ -85,11 +85,7 @@ class BankLoanApplication1(BaseEnvironment):
                 counts.index, size=n_agents, p=counts / counts.sum()
             ).astype(self.population_.data[col].dtype)
 
-        # Add new agents to population
-        self.population_.data = pd.concat([self.population_.data, new_agents])
-
-        self._max_id = self.population_.data.index.max()
-        return self
+        return new_agents
 
 
 class BankLoanApplication2(BaseEnvironment):
@@ -146,8 +142,4 @@ class BankLoanApplication2(BaseEnvironment):
                 counts.index, size=n_agents, p=counts / counts.sum()
             ).astype(self.population_.data[col].dtype)
 
-        # Add new agents to population
-        self.population_.data = pd.concat([self.population_.data, new_agents])
-
-        self._max_id = self.population_.data.index.max()
-        return self
+        return new_agents

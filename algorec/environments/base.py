@@ -125,9 +125,11 @@ class BaseEnvironment(ABC):
             if self.threshold_index_ < 0:
                 raise KeyError("Threshold cannot be larger than the population.")
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
-            self.threshold_ = probabilities[np.argsort(probabilities)][
-                self.threshold_index_
-            ] if threshold != 0 else np.nan
+            self.threshold_ = (
+                probabilities[np.argsort(probabilities)][self.threshold_index_]
+                if threshold != 0
+                else np.nan
+            )
 
         elif self.threshold_type == "fixed":
             self.threshold_ = threshold
@@ -138,7 +140,6 @@ class BaseEnvironment(ABC):
         return self
 
     def _update_adaptation(self):
-
         adaptation = (
             self.adaptation[self.step_]
             if type(self.adaptation) == np.ndarray
@@ -156,7 +157,6 @@ class BaseEnvironment(ABC):
         return self
 
     def _update_growth_rate(self):
-
         growth_rate = (
             self.growth_rate[self.step_]
             if type(self.growth_rate) == np.ndarray
@@ -262,6 +262,23 @@ class BaseEnvironment(ABC):
         if self.threshold_type in ["dynamic", "absolute"]:
             self.metadata_[self.step_]["threshold_index"] = self.threshold_index_
 
+    def adapt_agents(self, population):
+        # Get factuals + counterfactuals
+        factuals = self.population_.data
+        counterfactuals = self.counterfactual()
+
+        # Get adaptation rate for all agents
+        if self.adaptation_type == "binary":
+            cf_vectors = counterfactuals - factuals
+        elif self.adaptation_type == "stepwise":
+            cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
+        else:
+            raise NotImplementedError()
+
+        # Update existing agents' feature values
+        new_factuals = factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
+        return new_factuals
+
     def update(self):
         """
         Moves environment to the next time step.
@@ -277,24 +294,17 @@ class BaseEnvironment(ABC):
         if self.remove_winners:
             self.remove_agents(self.outcome_)
 
-        # Get factuals + counterfactuals
-        factuals = self.population_.data
-        counterfactuals = self.counterfactual()
-
-        # Get adaptation rate for all agents
-        if self.adaptation_type == "binary":
-            cf_vectors = counterfactuals - factuals
-        elif self.adaptation_type == "stepwise":
-            cf_vectors = self._counterfactual_vectors(factuals, counterfactuals)
-        else:
-            raise NotImplementedError()
-
-        # Update existing agents' feature values
-        new_factuals = factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
+        # Adapt agents
+        new_factuals = self.adapt_agents(population=self.population_.data)
         self.population_.data = new_factuals
 
         # Add new agents
-        self.add_agents(self.growth_k_)
+        new_agents = self.add_agents(self.growth_k_)
+        new_agents.index = range(
+            self._max_id + 1, self._max_id + new_agents.shape[0] + 1
+        )
+        self.population_.data = pd.concat([self.population_.data, new_agents])
+        self._max_id = self.population_.data.index.max()
 
         # Update variables
         self._update_adaptation()
@@ -357,24 +367,11 @@ class BaseEnvironment(ABC):
                 self.metadata_[step]["population"].data.loc[outcomes].index
             )
 
-            # USED FOR AUDITING CODE
-            # print(f"step: {step} | total_fav: {favorable_indices.shape[0]}")
-            # print("adaptation # (from metadata):", moved_indices.shape[0])
-            # if step != 0:
-            #     df = self.metadata_[step]["population"].data
-            #     df_prev = self.metadata_[step-1]["population"].data
-            #     idx = df.index.intersection(df_prev.index)
-            #     move = np.any(df.loc[idx] != df_prev.loc[idx], axis=1)
-            #     print("adaptation # (from visualization):", move.sum())
-
             success = favorable_outcomes.intersection(adapted)
             success_rate = (
                 success.shape[0] / adapted.shape[0] if adapted.shape[0] > 0 else np.nan
             )
 
-            # USED FOR AUDITING CODE
-            # print(
-            # f"moved+favorable: {success.shape[0]} | moved: {moved_indices.shape[0]}\n")
             success_rates.append(success_rate)
         return np.array(success_rates)
 
@@ -385,10 +382,10 @@ class BaseEnvironment(ABC):
             raise IndexError("Cannot threshold drift at ``step=0``.")
 
         steps = [step] if last_step is None else [s for s in range(step, last_step)]
-        steps = [step-1] + steps
+        steps = [step - 1] + steps
         thresholds = [self.metadata_[step]["threshold"] for step in steps]
         threshold_drift = [
-            (thresholds[i] - thresholds[i-1]) / thresholds[i-1]
+            (thresholds[i] - thresholds[i - 1]) / thresholds[i - 1]
             for i in range(1, len(thresholds))
         ]
         return np.array(threshold_drift)

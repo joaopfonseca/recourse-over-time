@@ -273,7 +273,13 @@ class EnvironmentPlot:
         ).plot.kde(**kwargs)
 
     def population_size(
-        self, min_step=None, max_step=None, legend=True, title=True, stacked=True, **kwargs
+        self,
+        min_step=None,
+        max_step=None,
+        legend=True,
+        title=True,
+        stacked=True,
+        **kwargs,
     ):
         """
         plots the number of agents per time step
