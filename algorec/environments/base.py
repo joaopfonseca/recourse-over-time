@@ -129,9 +129,7 @@ class BaseEnvironment(ABC):
                 np.round(threshold * self.population_.data.shape[0])
             )
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
-            threshold_ = probabilities[np.argsort(probabilities)][
-                self.threshold_index_
-            ]
+            threshold_ = probabilities[np.argsort(probabilities)][self.threshold_index_]
 
         elif self.threshold_type == "absolute":
             self.threshold_index_ = self.population_.data.shape[0] - threshold
@@ -229,7 +227,7 @@ class BaseEnvironment(ABC):
         if return_scores:
             return (
                 pd.Series(pred, index=population.data.index),
-                pd.Series(probs, index=population.data.index)
+                pd.Series(probs, index=population.data.index),
             )
         else:
             return pd.Series(pred, index=population.data.index)
@@ -256,21 +254,21 @@ class BaseEnvironment(ABC):
     def _counterfactual_gaussian_vectors(self, factuals, counterfactuals):
         score_change = np.abs(self._rng.normal(loc=0, scale=self.adaptation_))
         curr_scores = self.model_.predict_proba(self.population_.data)[:, 1]
-        target_scores = np.clip(curr_scores + score_change, 0.001, .999)
+        target_scores = np.clip(curr_scores + score_change, 0.001, 0.999)
 
         # Get base vectors
         base_vectors = counterfactuals - factuals
-        base_vectors = base_vectors / np.linalg.norm(base_vectors, axis=1).reshape(-1, 1)
+        base_vectors = base_vectors / np.linalg.norm(base_vectors, axis=1).reshape(
+            -1, 1
+        )
 
         # Get updated intersect
         intercept = self.model_.intercept_ - np.log(target_scores / (1 - target_scores))
 
         # Get multiplier
         multiplier = (
-            (-intercept - np.dot(factuals, self.model_.coef_.T).squeeze())
-            /
-            np.dot(base_vectors, self.model_.coef_.T).squeeze()
-        )
+            -intercept - np.dot(factuals, self.model_.coef_.T).squeeze()
+        ) / np.dot(base_vectors, self.model_.coef_.T).squeeze()
         return multiplier.reshape(-1, 1) * base_vectors
 
     def _counterfactual_stepwise_vectors(self, factuals, counterfactuals):
@@ -334,10 +332,14 @@ class BaseEnvironment(ABC):
             cf_vectors = counterfactuals - factuals
 
         elif self.adaptation_type == "stepwise":
-            cf_vectors = self._counterfactual_stepwise_vectors(factuals, counterfactuals)
+            cf_vectors = self._counterfactual_stepwise_vectors(
+                factuals, counterfactuals
+            )
 
         elif self.adaptation_type == "gaussian":
-            cf_vectors = self._counterfactual_gaussian_vectors(factuals, counterfactuals)
+            cf_vectors = self._counterfactual_gaussian_vectors(
+                factuals, counterfactuals
+            )
             new_factuals = factuals + cf_vectors
             return new_factuals, factuals, counterfactuals
 
@@ -437,7 +439,7 @@ class BaseEnvironment(ABC):
 
             # Indices of agents above threshold (according to the last state)
             above_threshold = (
-                self.metadata_[step]["scores"] >= self.metadata_[step-1]["threshold"]
+                self.metadata_[step]["scores"] >= self.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
 
@@ -452,7 +454,8 @@ class BaseEnvironment(ABC):
             success = np.intersect1d(favorable_outcomes, candidates)
             success_rate = (
                 success.shape[0] / candidates.shape[0]
-                if candidates.shape[0] > 0 else np.nan
+                if candidates.shape[0] > 0
+                else np.nan
             )
 
             success_rates.append(success_rate)
@@ -492,14 +495,14 @@ class BaseEnvironment(ABC):
           obtain a positive outcome.
         """
         idx = {
-            step: meta["population"].data.index
-            for step, meta in self.metadata_.items()
+            step: meta["population"].data.index for step, meta in self.metadata_.items()
         }
 
         # entered_step
         entered = [
-            pd.Series(i, index=idx[i][~idx[i].isin(idx[i-1])])
-            if i != 0 else pd.Series(i, index=idx[i])
+            pd.Series(i, index=idx[i][~idx[i].isin(idx[i - 1])])
+            if i != 0
+            else pd.Series(i, index=idx[i])
             for i in idx.keys()
         ]
         df = pd.concat(entered).to_frame("entered_step")
@@ -508,32 +511,35 @@ class BaseEnvironment(ABC):
         moving = [self._get_moving_agents(i) for i in idx.keys() if i != 0]
         moving = pd.Series(
             Counter([i for submoving in moving for i in submoving]),
-            name="n_adaptations"
+            name="n_adaptations",
         )
         df = pd.concat([df, moving], axis=1).copy()
         df["n_adaptations"] = df["n_adaptations"].fillna(0).astype(int)
 
         # favorable_step
         favorable = [(i, self.metadata_[i]["outcome"]) for i in idx.keys()]
-        favorable = pd.concat([
-            pd.Series(i, index=outcome[outcome == 1].index, name="favorable_step")
-            for i, outcome in favorable
-        ])
+        favorable = pd.concat(
+            [
+                pd.Series(i, index=outcome[outcome == 1].index, name="favorable_step")
+                for i, outcome in favorable
+            ]
+        )
         df = pd.concat([df, favorable], axis=1)
 
         # original_score
         df["original_score"] = df.apply(
             lambda row: self.metadata_[row["entered_step"]]["scores"].loc[row.name],
-            axis=1
+            axis=1,
         )
 
         # final_score
         df["final_score"] = df.apply(
             lambda row: (
                 self.metadata_[row["favorable_step"]]["scores"].loc[row.name]
-                if not np.isnan(row["favorable_step"]) else np.nan
+                if not np.isnan(row["favorable_step"])
+                else np.nan
             ),
-            axis=1
+            axis=1,
         )
 
         # n_failures
@@ -543,7 +549,7 @@ class BaseEnvironment(ABC):
                 continue
             adapted = self._get_moving_agents(step)
             above_threshold = (
-                self.metadata_[step]["scores"] >= self.metadata_[step-1]["threshold"]
+                self.metadata_[step]["scores"] >= self.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
             candidates = np.intersect1d(adapted, above_threshold)
