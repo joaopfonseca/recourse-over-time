@@ -139,8 +139,6 @@ class EnvironmentPlot:
 
         # Visualize agents
         if step > 0:
-            # idx = df.index.intersection(df_prev.index)
-            # move = np.any(df.loc[idx] != df_prev.loc[idx], axis=1)
             move = self.environment._get_moving_agents(step)
 
             # Plot movement lines
