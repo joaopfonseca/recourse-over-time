@@ -4,6 +4,7 @@ from copy import deepcopy
 from collections import Counter
 import numpy as np
 import pandas as pd
+from scipy.stats import binom
 
 from ..visualization import EnvironmentPlot
 
@@ -41,10 +42,12 @@ class BaseEnvironment(ABC):
 
     - adaptation: If adaptation_type is stepwise, it represents the rate of adaptation
         of agents towards their counterfactuals. If adaptation_type is binary, the
-        adaptation value determines the likelihood of adaptation. If adaptation_type is
-        gaussian, the adaptation value determines the flexibility of agents to adapt.
+        adaptation value determines the likelihood of adaptation.  If adaptation_type is
+        binary_fixed, the adaptation value determines the number of adaptations.  If
+        adaptation_type is gaussian, the adaptation value determines the flexibility of
+        agents to adapt.
 
-    - adaptation_type: can be binary, stepwise, or gaussian
+    - adaptation_type: can be binary, binary_fixed, stepwise, or gaussian
 
     - threshold: probability threshold to consider an agent's outcome as
       favorable/unfavorable
@@ -108,11 +111,11 @@ class BaseEnvironment(ABC):
         if not hasattr(self, "_rng"):
             self._rng = np.random.default_rng(self.random_state)
 
-        if not hasattr(self, "adaptation_"):
-            self.adaptation_ = self._update_adaptation()
-
         if not hasattr(self, "outcome_"):
             self.outcome_, self.scores_ = self.predict(return_scores=True)
+
+        if not hasattr(self, "adaptation_"):
+            self.adaptation_ = self._update_adaptation()
 
         if not hasattr(self, "_max_id"):
             self._max_id = self.population_.data.index.max()
@@ -156,6 +159,9 @@ class BaseEnvironment(ABC):
 
         Must return a pd.Series object (where the index corresponds to the population's
         indices).
+
+        NOTE: for the "binary_fixed" case to work properly, this parameter must ALWAYS
+        be the last one to be updated.
         """
         adaptation = (
             self.adaptation[self.step_]
@@ -172,6 +178,12 @@ class BaseEnvironment(ABC):
             adaptation = self._rng.binomial(
                 1, adaptation, self.population_.data.shape[0]
             )
+        elif self.adaptation_type == "binary_fixed":
+            idx = np.where(self.scores_ < self.threshold_)[0]
+            idx = self._rng.choice(idx, size=adaptation, replace=False)
+            adaptation = np.zeros(self.population_.data.shape[0], dtype=int)
+            adaptation[idx] = 1
+
         elif self.adaptation_type == "stepwise":
             # No action needed - elif included for clarification
             pass
@@ -297,7 +309,7 @@ class BaseEnvironment(ABC):
             "population": deepcopy(self.population_),
             "adaptation": deepcopy(self.adaptation_),
             "outcome": self.outcome_,
-            "scores": self.scores_,
+            "score": self.scores_,
             "threshold": self.threshold_,
             "growth_k": self.growth_k_,
         }
@@ -328,7 +340,7 @@ class BaseEnvironment(ABC):
         counterfactuals = self.counterfactual()
 
         # Get adaptation rate for all agents
-        if self.adaptation_type == "binary":
+        if self.adaptation_type in ["binary", "binary_fixed"]:
             cf_vectors = counterfactuals - factuals
 
         elif self.adaptation_type == "stepwise":
@@ -382,10 +394,8 @@ class BaseEnvironment(ABC):
         # Update variables
         self.growth_k_ = self._update_growth_rate()
         self.threshold_ = self._update_threshold()
-        self.adaptation_ = self._update_adaptation()
-
-        # Determine outcome of current step
         self.outcome_, self.scores_ = self.predict(return_scores=True)
+        self.adaptation_ = self._update_adaptation()
 
         # Update metadata and step number
         self.step_ += 1
@@ -418,12 +428,16 @@ class BaseEnvironment(ABC):
         )
         return adapted[adapted].index.values
 
+    # NOTE: THIS SECTION ONWARDS ARE DEDICATED TO ANALYSIS.
+    #       THESE METHODS SHOULD BE IN THEIR OWN SUBMODULE.
     def success_rate(self, step, last_step=None):
         """
         For an agent to move, they need to have adaptation > 0, unfavorable outcome and
         score < threshold.
 
         If nan, no agents adapted (thus no rate is calculated).
+
+        NOTE: DEPRECATED; REMOVE SOON.
         """
         if step == 0:
             raise IndexError(
@@ -439,7 +453,7 @@ class BaseEnvironment(ABC):
 
             # Indices of agents above threshold (according to the last state)
             above_threshold = (
-                self.metadata_[step]["scores"] >= self.metadata_[step - 1]["threshold"]
+                self.metadata_[step]["score"] >= self.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
 
@@ -462,7 +476,11 @@ class BaseEnvironment(ABC):
         return np.array(success_rates)
 
     def threshold_drift(self, step=None, last_step=None):
-        """Calculate threshold variations across time steps."""
+        """
+        Calculate threshold variations across time steps.
+
+        NOTE: DEPRECATED; REMOVE SOON.
+        """
 
         if step == 0:
             raise IndexError("Cannot get threshold drift at ``step=0``.")
@@ -470,7 +488,7 @@ class BaseEnvironment(ABC):
         step = 1 if step is None else step
         last_step = max(self.metadata_.keys()) if last_step is None else last_step
 
-        steps = [step] if last_step is None else [s for s in range(step, last_step)]
+        steps = [step] if last_step is None else [s for s in range(step, last_step + 1)]
         steps = [step - 1] + steps
         thresholds = [self.metadata_[step]["threshold"] for step in steps]
         threshold_drift = [
@@ -479,7 +497,7 @@ class BaseEnvironment(ABC):
         ]
         return np.array(threshold_drift)
 
-    def agent_performance(self):
+    def agents_info(self):
         """
         Return a dataframe with number of adaptations performed by each agent that
         entered the environment.
@@ -528,14 +546,14 @@ class BaseEnvironment(ABC):
 
         # original_score
         df["original_score"] = df.apply(
-            lambda row: self.metadata_[row["entered_step"]]["scores"].loc[row.name],
+            lambda row: self.metadata_[row["entered_step"]]["score"].loc[row.name],
             axis=1,
         )
 
         # final_score
         df["final_score"] = df.apply(
             lambda row: (
-                self.metadata_[row["favorable_step"]]["scores"].loc[row.name]
+                self.metadata_[row["favorable_step"]]["score"].loc[row.name]
                 if not np.isnan(row["favorable_step"])
                 else np.nan
             ),
@@ -549,7 +567,7 @@ class BaseEnvironment(ABC):
                 continue
             adapted = self._get_moving_agents(step)
             above_threshold = (
-                self.metadata_[step]["scores"] >= self.metadata_[step - 1]["threshold"]
+                self.metadata_[step]["score"] >= self.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
             candidates = np.intersect1d(adapted, above_threshold)
@@ -558,3 +576,87 @@ class BaseEnvironment(ABC):
             failed = np.intersect1d(unfavorable, candidates)
             df.loc[failed, "n_failures"] += 1
         return df
+
+    def steps_info(self):
+        """
+        Return a dataframe with information regarding each time step in the environment.
+
+        Contains the following features:
+        - n_adapted: number of agents that adapted.
+        - n_candidates: number of agents that adapted and crossed the previous time
+          step's threshold.
+        - favorable_outcomes: number of favorable outcomes.
+        - success_rate: percentage of favorable outcomes within agents that adapted and
+          crossed the threshold.
+        - threshold: threshold value.
+        - threshold_drift: percentage change between thresholds.
+        - new_agents: number of new agents
+        - new_agents_proba: probability of a single new agent to be above the threshold.
+        """
+        info = {}
+        for step in self.metadata_.keys():
+            if step == 0:
+                continue
+
+            # Number of agents that moved
+            adapted = self._get_moving_agents(step)
+
+            # Number of agents that moved and crossed the threshold
+            above_threshold = (
+                self.metadata_[step]["score"] >= self.metadata_[step - 1]["threshold"]
+            )
+            above_threshold = above_threshold[above_threshold].index.to_numpy()
+            candidates = np.intersect1d(adapted, above_threshold)
+
+            # Number of agents with favorable outcome
+            favorable_outcomes = self.metadata_[step]["outcome"].astype(bool)
+            favorable_outcomes = favorable_outcomes[favorable_outcomes].index.to_numpy()
+
+            # Indices of agents that moved and have a favorable outcome
+            success = np.intersect1d(favorable_outcomes, candidates)
+            success_rate = (
+                success.shape[0] / candidates.shape[0]
+                if candidates.shape[0] > 0
+                else np.nan
+            )
+
+            # Calculate threshold drift
+            threshold_prev = self.metadata_[step - 1]["threshold"]
+            threshold = self.metadata_[step]["threshold"]
+            threshold_drift = (threshold - threshold_prev) / threshold_prev
+
+            # Number of new agents
+            idx_prev = self.metadata_[step - 1]["population"].data.index
+            idx = self.metadata_[step]["population"].data.index
+            new_agents = idx[~idx.isin(idx_prev)].shape[0]
+
+            # Create entry for dataframe
+            info[step] = {
+                "n_adapted": adapted.shape[0],
+                "n_candidates": candidates.shape[0],
+                "favorable_outcomes": favorable_outcomes.shape[0],
+                "success_rate": success_rate,
+                "threshold": threshold,
+                "threshold_drift": threshold_drift,
+                "new_agents": new_agents,
+                "new_agents_proba": self.new_agent_proba(threshold),
+            }
+        return pd.DataFrame(info).T
+
+    def new_agent_proba(self, threshold):
+        """
+        Calculates the probability for a new agent to be above a given threshold,
+        based on the distribution of previously added agents.
+        """
+        scores = self.metadata_[0]["score"]
+        return (scores >= threshold).astype(int).sum() / scores.shape[0]
+
+    def get_n_new_agents_proba(self, new_agents, n_above, threshold):
+        """
+        Calculates the probability for at least ``n`` new agents to be above a given
+        threshold within a set of newly-introduced agents, based on the distribution of
+        previously added agents.
+        """
+        p = self.new_agent_proba(threshold)
+        dist = binom(new_agents, p)
+        return sum([dist.pmf(i) for i in range(n_above, new_agents + 1)])
