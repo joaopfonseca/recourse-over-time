@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Union
 from copy import deepcopy
+from itertools import product
 from collections import Counter
 import numpy as np
 import pandas as pd
-from scipy.stats import binom
+from scipy.stats import binom, norm
 
 from ..visualization import EnvironmentPlot
 
@@ -170,14 +171,17 @@ class BaseEnvironment(ABC):
         )
 
         if self.adaptation_type == "gaussian":
+            # adaptation are the standard deviations for each agent's gaussian
             scores = self.model_.predict_proba(self.population_.data)[:, 1]
             threshold = self.threshold_
             x = threshold - scores
-            adaptation = adaptation / np.exp(x)
+            adaptation = adaptation**5 / np.exp(x * 5)
+
         elif self.adaptation_type == "binary":
             adaptation = self._rng.binomial(
                 1, adaptation, self.population_.data.shape[0]
             )
+
         elif self.adaptation_type == "binary_fixed":
             idx = np.where(self.scores_ < self.threshold_)[0]
             idx = self._rng.choice(idx, size=adaptation, replace=False)
@@ -428,7 +432,7 @@ class BaseEnvironment(ABC):
         )
         return adapted[adapted].index.values
 
-    # NOTE: THIS SECTION ONWARDS ARE DEDICATED TO ANALYSIS.
+    # NOTE: THIS SECTION ONWARDS IS DEDICATED TO ANALYSIS.
     #       THESE METHODS SHOULD BE IN THEIR OWN SUBMODULE.
     def success_rate(self, step, last_step=None):
         """
@@ -592,6 +596,10 @@ class BaseEnvironment(ABC):
         - threshold_drift: percentage change between thresholds.
         - new_agents: number of new agents
         - new_agents_proba: probability of a single new agent to be above the threshold.
+        - moving_agent_proba: mean likelihood of an agent to adapt and cross the
+          threshold.
+        - success_proba: probability of an agent adapting towards its counterfactual to
+          achieve a positive outcome.
         """
         info = {}
         for step in self.metadata_.keys():
@@ -630,6 +638,8 @@ class BaseEnvironment(ABC):
             idx = self.metadata_[step]["population"].data.index
             new_agents = idx[~idx.isin(idx_prev)].shape[0]
 
+            # Probability of achieving a favorable outcome
+
             # Create entry for dataframe
             info[step] = {
                 "n_adapted": adapted.shape[0],
@@ -640,6 +650,8 @@ class BaseEnvironment(ABC):
                 "threshold_drift": threshold_drift,
                 "new_agents": new_agents,
                 "new_agents_proba": self.new_agent_proba(threshold),
+                "moving_agent_proba": self.moving_agent_proba(step=step).mean(),
+                "success_proba": self.success_proba(step=step),
             }
         return pd.DataFrame(info).T
 
@@ -651,12 +663,96 @@ class BaseEnvironment(ABC):
         scores = self.metadata_[0]["score"]
         return (scores >= threshold).astype(int).sum() / scores.shape[0]
 
-    def get_n_new_agents_proba(self, new_agents, n_above, threshold):
+    def n_new_agents_proba(self, n_above, new_agents=None, threshold=None, step=None):
         """
         Calculates the probability for at least ``n`` new agents to be above a given
         threshold within a set of newly-introduced agents, based on the distribution of
         previously added agents.
         """
+        step = self.step_ if step is None else step
+
+        if threshold is None:
+            threshold = self.metadata_[step]["threshold"]
+
+        if new_agents is None:
+            new_agents = self.metadata_[step]["growth_k"]
+
         p = self.new_agent_proba(threshold)
         dist = binom(new_agents, p)
         return sum([dist.pmf(i) for i in range(n_above, new_agents + 1)])
+
+    def moving_agent_proba(self, step=None):
+        """
+        Calculate probability of each agent to simultaneously adapt and cross the
+        threshold.
+        """
+        if step is None:
+            step = self.step_
+
+        scores = self.metadata_[step]["score"]
+        threshold = self.metadata_[step]["threshold"]
+        adaptation = self.metadata_[step]["adaptation"]
+
+        mask = scores < threshold
+        scores = scores[mask]
+        adaptation = adaptation[mask]
+
+        if self.adaptation_type in ["binary", "binary_fixed"]:
+            p = adaptation.sum() / adaptation.shape[0]
+        elif self.adaptation_type == "gaussian":
+            p = norm(loc=0, scale=adaptation).sf(threshold - scores) * 2
+        elif self.adaptation_type == "stepwise":
+            raise NotImplementedError()
+
+        return pd.Series(p, index=scores.index)
+
+    def n_moving_agents_proba(self, n_above, step=None):
+        """
+        Calculates the probability for at least ``n`` agents to move above a given
+        threshold within the set of agents in the environment.
+
+        NOTE: Continuity correction is applied, i.e., the output corresponds to
+        ``P(X >= n_above-0.5)``.
+        """
+
+        if step is None:
+            step = self.step_
+
+        p = self.moving_agent_proba(step)
+        mean = p.sum()
+        std = np.sqrt(np.sum(p * (1 - p)))
+
+        # Applying continuity correction
+        return norm(loc=mean, scale=std).sf(n_above - 0.5)
+
+    @np.vectorize
+    def _success_single_comb(self, new, ada, step):
+        p_new = self.n_new_agents_proba(new, step) - self.n_new_agents_proba(
+            new + 1, step
+        )
+        p_ada = self.n_moving_agents_proba(ada, step) - self.n_moving_agents_proba(
+            ada + 1, step
+        )
+        return p_new * p_ada
+
+    def success_proba(self, step=None):
+        """
+        Calculate the probability of an agent adapting exactly towards its counterfactual
+        to receive a positive outcome, i.e., calculates
+        ``P(pos_outcome | delta_score = threshold - score)``.
+        """
+        if step is None:
+            step = self.step_
+
+        scores = self.metadata_[step]["score"]
+        threshold = self.metadata_[step]["threshold"]
+        n_pos = self.metadata_[step]["outcome"].sum()
+
+        # Get all combinations of numbers of negative outcomes
+        new_agents = list(range(self.metadata_[step]["growth_k"] + 1))
+        adapting_agents = list(range((scores < threshold).sum() + 1))
+        combinations = np.array(
+            [(i, j) for i, j in product(new_agents, adapting_agents) if i + j < n_pos]
+        )
+
+        return self._success_single_comb(self, *combinations.T, step).sum()
