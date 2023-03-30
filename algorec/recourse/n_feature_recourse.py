@@ -45,7 +45,7 @@ class NFeatureRecourse(BaseRecourse):
         counterfactual = agent + multiplier * base_vector
 
         # Check if base_vector adjustments are not generating invalid counterfactuals
-        for _ in range(agent.shape[0]):
+        for i in range(agent.shape[0]):
             # Adjust vector according to features' bounds
             lb, ub = np.array(action_set.lb), np.array(action_set.ub)
             lb_valid = counterfactual >= lb
@@ -66,12 +66,18 @@ class NFeatureRecourse(BaseRecourse):
                 agent[idx] = ub[idx]
                 base_vector[idx] = 0
 
-            # Redefine counterfactual after adjusting the base vector
-            base_vector = base_vector / np.linalg.norm(base_vector)
-            multiplier = (-intercept - np.dot(agent.values, coefficients.T)) / np.dot(
-                base_vector, coefficients.T
-            )
-            counterfactual = agent + multiplier * base_vector
+            if (base_vector == 0).all():
+                # All max/min boundaries have been met.
+                counterfactual = agent
+            else:
+                # Redefine counterfactual after adjusting the base vector
+                base_vector = base_vector / np.linalg.norm(base_vector)
+                multiplier = (
+                    -intercept - np.dot(agent.values, coefficients.T)
+                ) / np.dot(
+                    base_vector, coefficients.T
+                )
+                counterfactual = agent + multiplier * base_vector
 
         lb, ub = np.array(action_set.lb), np.array(action_set.ub)
         lb_valid = counterfactual >= lb
