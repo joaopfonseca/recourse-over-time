@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from .base import BaseRecourse
 
@@ -9,11 +10,14 @@ class NFeatureRecourse(BaseRecourse):
         self.threshold = threshold
 
     def _counterfactual(self, agent, action_set):
-        intercept, coefficients, model = self._get_coefficients()
+
+        agent = agent.copy()
 
         # Do not change if the agent is over the threshold
         if self.model.predict_proba(agent.to_frame().T)[0, -1] >= self.threshold:
             return agent
+
+        intercept, coefficients, model = self._get_coefficients()
 
         # Get base vector
         base_vector = coefficients.copy().squeeze()
@@ -35,10 +39,46 @@ class NFeatureRecourse(BaseRecourse):
         base_vector[rejected_features] = 0
 
         base_vector = base_vector / np.linalg.norm(base_vector)
-        reg_target = -intercept
-        multiplier = (reg_target - np.dot(agent.values, coefficients.T)) / np.dot(
+        multiplier = (-intercept - np.dot(agent.values, coefficients.T)) / np.dot(
             base_vector, coefficients.T
         )
         counterfactual = agent + multiplier * base_vector
+
+        # Check if base_vector adjustments are not generating invalid counterfactuals
+        for _ in range(agent.shape[0]):
+            # Adjust vector according to features' bounds
+            lb, ub = np.array(action_set.lb), np.array(action_set.ub)
+            lb_valid = counterfactual >= lb
+            ub_valid = counterfactual <= ub
+
+            if lb_valid.all() and ub_valid.all():
+                break
+
+            if not lb_valid.all():
+                # Fix values to its lower bound
+                idx = np.where(~lb_valid)[0]
+                agent[idx] = lb[idx]
+                base_vector[idx] = 0
+
+            if not ub_valid.all():
+                # Fix values to its upper bound
+                idx = np.where(~ub_valid)[0]
+                agent[idx] = ub[idx]
+                base_vector[idx] = 0
+
+            # Redefine counterfactual after adjusting the base vector
+            base_vector = base_vector / np.linalg.norm(base_vector)
+            multiplier = (-intercept - np.dot(agent.values, coefficients.T)) / np.dot(
+                base_vector, coefficients.T
+            )
+            counterfactual = agent + multiplier * base_vector
+
+        lb, ub = np.array(action_set.lb), np.array(action_set.ub)
+        lb_valid = counterfactual >= lb
+        ub_valid = counterfactual <= ub
+        if not (lb_valid.all() and ub_valid.all()):
+            warnings.warn(
+                "Could not generate a counterfactual to reach the desired threshold."
+            )
 
         return counterfactual
