@@ -91,7 +91,7 @@ class EnvironmentPlot:
         self.mesh_ = np.reshape(mesh, mesh_size)
         return self
 
-    def scatter(self, step=None, mesh_size=(100, 100), legend=True, title=True):
+    def scatter(self, step=None, mesh_size=(100, 100), legend=True, title=True, ax=None):
         """Visualize the population in a 2d-scatter plot."""
         if not hasattr(self, "_autoencoder"):
             self.fit()
@@ -131,7 +131,8 @@ class EnvironmentPlot:
             )
 
         # Visualize probabilities
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        if ax is None:
+            _, ax = plt.subplots(1, 1, figsize=(10, 10))
 
         prob = self.mesh_
 
@@ -182,9 +183,11 @@ class EnvironmentPlot:
             ax.set_title(f"Population at t={step}")
         ax.set_xlabel(df.columns[0])
         ax.set_ylabel(df.columns[1])
-        return fig, ax
+        return ax
 
-    def agent_scores(self, min_step=None, max_step=None, legend=True, title=True):
+    def agent_scores(
+        self, min_step=None, max_step=None, legend=True, title=True, ax=None
+    ):
         """Visualize population scores across multiple time steps."""
         if not hasattr(self, "_autoencoder"):
             self.fit()
@@ -194,7 +197,8 @@ class EnvironmentPlot:
             for i, metadata in self.environment.metadata_.items()
         ][min_step:max_step]
 
-        fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+        if ax is None:
+            _, ax = plt.subplots(1, 1, figsize=(10, 10))
 
         for step, df, threshold in df_list:
             prob = self.environment.model_.predict_proba(df)[:, -1]
@@ -237,7 +241,7 @@ class EnvironmentPlot:
         ax.set_xlabel("Step")
         ax.set_ylabel("Score")
 
-        return fig, ax
+        return ax
 
     def scores_histogram(self, step=None, **kwargs):
         """
@@ -277,6 +281,7 @@ class EnvironmentPlot:
         legend=True,
         title=True,
         stacked=True,
+        ax=None,
         **kwargs,
     ):
         """
@@ -294,7 +299,7 @@ class EnvironmentPlot:
         df.set_index("step", inplace=True)
         df["unfavorable"] = df["pop"] - df["favorable"]
         df.drop(columns="pop", inplace=True)
-        ax = df[["unfavorable", "favorable"]].plot.bar(stacked=stacked, **kwargs)
+        ax = df[["unfavorable", "favorable"]].plot.bar(stacked=stacked, ax=ax, **kwargs)
 
         if title:
             ax.set_title(f"Population size over {len(pop_list)} time steps")

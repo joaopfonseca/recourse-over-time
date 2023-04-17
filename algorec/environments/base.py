@@ -26,7 +26,7 @@ class BaseEnvironment(ABC):
         * Could be defined as a function?
     - [x] Algorithmic Recourse method
     - [x] Distribution of Agents' percentage of adaptation
-    - [ ] Define how this percentage changes over time:
+    - [x] Define how this percentage changes over time:
         * Increase rate: over time people get more motivated to move towards
           counterfactual
         * Decrease rate: over time people lose motivation to move towards
@@ -34,7 +34,9 @@ class BaseEnvironment(ABC):
         * Mixed: Some people get more motivation, others lose it.
     - [ ] Add verbosity
     - [ ] A lot of functions are using self.model_.predict_proba. Agents' scores could
-          be saved in the metadata and repurposed to save on processing time.
+          be saved in the metadata and repurposed to save on processing time; save a
+          ``self.score_`` variable, save it on metadata and use these where
+          ``self.model_.predict_proba`` is being used.
 
     Parameters:
     - population: ``Population`` object containing the Agents' information
@@ -136,9 +138,11 @@ class BaseEnvironment(ABC):
             threshold_ = probabilities[np.argsort(probabilities)][self.threshold_index_]
 
         elif self.threshold_type == "absolute":
+
             self.threshold_index_ = self.population_.data.shape[0] - threshold
             if self.threshold_index_ < 0:
-                raise KeyError("Threshold cannot be larger than the population.")
+                self.threshold_index_ = self.population_.data.shape[0] - 1
+
             probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
             threshold_ = (
                 probabilities[np.argsort(probabilities)][self.threshold_index_]
@@ -184,7 +188,11 @@ class BaseEnvironment(ABC):
 
         elif self.adaptation_type == "binary_fixed":
             idx = np.where(self.scores_ < self.threshold_)[0]
-            idx = self._rng.choice(idx, size=adaptation, replace=False)
+
+            # If this is false, we assume all remaining agents adapt
+            if idx.shape[0] > int(adaptation):
+                idx = self._rng.choice(idx, size=int(adaptation), replace=False)
+
             adaptation = np.zeros(self.population_.data.shape[0], dtype=int)
             adaptation[idx] = 1
 
@@ -270,13 +278,12 @@ class BaseEnvironment(ABC):
     def _counterfactual_gaussian_vectors(self, factuals, counterfactuals):
         score_change = np.abs(self._rng.normal(loc=0, scale=self.adaptation_))
         curr_scores = self.model_.predict_proba(self.population_.data)[:, 1]
-        target_scores = np.clip(curr_scores + score_change, 0.001, 0.999)
+        target_scores = np.clip(curr_scores + score_change, 0, 0.999)
 
         # Get base vectors
         base_vectors = counterfactuals - factuals
-        base_vectors = base_vectors / np.linalg.norm(base_vectors, axis=1).reshape(
-            -1, 1
-        )
+        base_dist = np.linalg.norm(base_vectors, axis=1).reshape(-1, 1)
+        base_vectors = base_vectors / base_dist
 
         # Get updated intersect
         intercept = self.model_.intercept_ - np.log(target_scores / (1 - target_scores))
@@ -285,7 +292,10 @@ class BaseEnvironment(ABC):
         multiplier = (
             -intercept - np.dot(factuals, self.model_.coef_.T).squeeze()
         ) / np.dot(base_vectors, self.model_.coef_.T).squeeze()
-        return multiplier.reshape(-1, 1) * base_vectors
+
+        cf_vectors = multiplier.reshape(-1, 1) * base_vectors
+        cf_vectors.loc[base_dist == 0] = 0
+        return cf_vectors
 
     def _counterfactual_stepwise_vectors(self, factuals, counterfactuals):
         """Used only for stepwise and gaussian adaptation approaches."""
@@ -357,6 +367,11 @@ class BaseEnvironment(ABC):
                 factuals, counterfactuals
             )
             new_factuals = factuals + cf_vectors
+            new_factuals = np.clip(
+                new_factuals,
+                self.population_.action_set_.lb,
+                self.population_.action_set_.ub,
+            )
             return new_factuals, factuals, counterfactuals
 
         else:
@@ -364,6 +379,11 @@ class BaseEnvironment(ABC):
 
         # Update existing agents' feature values
         new_factuals = factuals + self.adaptation_.values.reshape(-1, 1) * cf_vectors
+        new_factuals = np.clip(
+            new_factuals,
+            self.population_.action_set_.lb,
+            self.population_.action_set_.ub,
+        )
         return new_factuals, factuals, counterfactuals
 
     def update(self):
