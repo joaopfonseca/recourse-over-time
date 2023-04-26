@@ -10,7 +10,6 @@ class NFeatureRecourse(BaseRecourse):
         self.threshold = threshold
 
     def _counterfactual(self, agent, action_set):
-
         agent = agent.copy()
 
         # Do not change if the agent is over the threshold
@@ -74,9 +73,7 @@ class NFeatureRecourse(BaseRecourse):
                 base_vector = base_vector / np.linalg.norm(base_vector)
                 multiplier = (
                     -intercept - np.dot(agent.values, coefficients.T)
-                ) / np.dot(
-                    base_vector, coefficients.T
-                )
+                ) / np.dot(base_vector, coefficients.T)
                 counterfactual = agent + multiplier * base_vector
 
         lb, ub = np.array(action_set.lb), np.array(action_set.ub)

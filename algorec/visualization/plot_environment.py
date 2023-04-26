@@ -91,7 +91,9 @@ class EnvironmentPlot:
         self.mesh_ = np.reshape(mesh, mesh_size)
         return self
 
-    def scatter(self, step=None, mesh_size=(100, 100), legend=True, title=True, ax=None):
+    def scatter(
+        self, step=None, mesh_size=(100, 100), legend=True, title=True, ax=None
+    ):
         """Visualize the population in a 2d-scatter plot."""
         if not hasattr(self, "_autoencoder"):
             self.fit()

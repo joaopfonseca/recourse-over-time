@@ -138,7 +138,6 @@ class BaseEnvironment(ABC):
             threshold_ = probabilities[np.argsort(probabilities)][self.threshold_index_]
 
         elif self.threshold_type == "absolute":
-
             self.threshold_index_ = self.population_.data.shape[0] - threshold
             if self.threshold_index_ < 0:
                 self.threshold_index_ = self.population_.data.shape[0] - 1
@@ -179,7 +178,7 @@ class BaseEnvironment(ABC):
             scores = self.model_.predict_proba(self.population_.data)[:, 1]
             threshold = self.threshold_
             x = threshold - scores
-            adaptation = adaptation**5 / np.exp(x * 5)
+            adaptation = (adaptation) / (20 * np.exp(10 * x))
 
         elif self.adaptation_type == "binary":
             adaptation = self._rng.binomial(
@@ -408,11 +407,11 @@ class BaseEnvironment(ABC):
         self.population_.data = new_factuals
 
         # Add new agents
-        new_agents = self.add_agents(self.growth_k_)
-        new_agents.index = range(
-            self._max_id + 1, self._max_id + new_agents.shape[0] + 1
+        self._new_agents = self.add_agents(self.growth_k_)
+        self._new_agents.index = range(
+            self._max_id + 1, self._max_id + self._new_agents.shape[0] + 1
         )
-        self.population_.data = pd.concat([self.population_.data, new_agents])
+        self.population_.data = pd.concat([self.population_.data, self._new_agents])
         self._max_id = self.population_.data.index.max()
 
         # Update variables
