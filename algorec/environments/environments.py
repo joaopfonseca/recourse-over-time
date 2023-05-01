@@ -238,13 +238,18 @@ class WillingnessEnvironment(BaseEnvironment):
         )
 
         # Define their willingness to adapt based on initial score
-        scores = self.model_.predict_proba(agents)[:, 1]
-        threshold = self.threshold_
+        # scores = self.model_.predict_proba(agents)[:, 1]
+        # threshold = self.threshold_
 
-        # ``x`` is the invidual adaptation (willingness), ``adaptation`` is global
-        # in ``x``, with this configuration, lower is better
-        x = threshold - scores
-        adaptation = adaptation / (20 * np.exp(10 * x))
+        # # ``x`` is the invidual adaptation (willingness), ``adaptation`` is global
+        # # in ``x``, with this configuration, lower is better
+        # x = threshold - scores
+        # adaptation = adaptation / (20 * np.exp(10 * x))
+        # adaptation = pd.Series(adaptation, index=agents.index)
+
+        # Alternative, make willingness to adapt random
+        x = self._rng.random()
+        adaptation = x * adaptation / 25
         adaptation = pd.Series(adaptation, index=agents.index)
 
         adaptation = pd.concat([current_adaptation, adaptation])
