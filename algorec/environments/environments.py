@@ -3,29 +3,45 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 from .base import BaseEnvironment
+from ..utils import generate_synthetic_data
 
 
 def _add_agents(self, n_agents):
     all_cols = self.population.data.columns
-    categorical = self.population.categorical
     categorical = (
         [] if self.population.categorical is None else self.population.categorical
     )
     continuous = all_cols.drop(categorical)
 
-    new_agents = pd.DataFrame(
-        self._rng.random((n_agents, len(continuous))),
-        columns=continuous,
-        index=range(self._max_id + 1, self._max_id + n_agents + 1),
+    X, _, _ = generate_synthetic_data(
+        n_agents=n_agents,
+        n_continuous=len(continuous),
+        n_categorical=len(categorical),
+        random_state=self._rng,
     )
-    for col in categorical:
-        # Use the original data to retrieve the distributions
-        counts = self.population.data.groupby(col).size()
-        new_agents[col] = self._rng.choice(
-            counts.index, size=n_agents, p=counts / counts.sum()
-        ).astype(self.population_.data[col].dtype)
+    return X
 
-    return new_agents
+
+# def _add_agents(self, n_agents):
+#     all_cols = self.population.data.columns
+#     categorical = (
+#         [] if self.population.categorical is None else self.population.categorical
+#     )
+#     continuous = all_cols.drop(categorical)
+#
+#     new_agents = pd.DataFrame(
+#         self._rng.normal(loc=0.5, scale=1/3, size=(n_agents, len(continuous))),
+#         columns=continuous,
+#         index=range(self._max_id + 1, self._max_id + n_agents + 1),
+#     )
+#     for col in categorical:
+#         # Use the original data to retrieve the distributions
+#         counts = self.population.data.groupby(col).size()
+#         new_agents[col] = self._rng.choice(
+#             counts.index, size=n_agents, p=counts / counts.sum()
+#         ).astype(self.population_.data[col].dtype)
+#
+#     return new_agents
 
 
 class ClosedEnvironment(BaseEnvironment):

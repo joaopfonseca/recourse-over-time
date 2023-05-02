@@ -178,7 +178,7 @@ class BaseEnvironment(ABC):
             scores = self.model_.predict_proba(self.population_.data)[:, 1]
             threshold = self.threshold_
             x = threshold - scores
-            adaptation = (adaptation) / (20 * np.exp(10 * x))
+            adaptation = (adaptation) / (10 * np.exp(5 * x))
 
         elif self.adaptation_type == "binary":
             adaptation = self._rng.binomial(
