@@ -6,7 +6,7 @@
 
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 PROFILE = default
-PROJECT_NAME = algorec
+PROJECT_NAME = recgame
 PYTHON_INTERPRETER = python3
 
 ifeq (,$(shell which conda))
