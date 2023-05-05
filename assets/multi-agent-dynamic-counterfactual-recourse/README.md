@@ -1,4 +1,4 @@
-# Mulit Agent Dynamic Counterfactual Recourse
+# Multi Agent Dynamic Counterfactual Recourse
 
 **Work in progress**
 
