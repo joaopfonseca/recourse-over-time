@@ -35,7 +35,7 @@ def simulations_scores_panel(results, adaptation_list, new_agents_list):
     for j in range(len(new_agents_list)):
         axes[-1, j].set_xlabel(f"{new_agents_list[j]}")
 
-    fig.supxlabel(r"\# New Agents")
+    fig.supxlabel(r"Number of New Agents")
     fig.supylabel("Adaptation")
 
     return fig, axes
@@ -77,7 +77,7 @@ def simulations_success_rate_panels(results, adaptation_list, new_agents_list):
         axes[-1, j].set_xlabel(f"{new_agents_list[j]}")
 
     # fig.suptitle("Success rate")
-    fig.supxlabel(r"\# New Agents")
+    fig.supxlabel(r"Number of New Agents")
     fig.supylabel("Adaptation")
 
     return fig, axes

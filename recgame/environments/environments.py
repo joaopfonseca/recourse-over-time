@@ -265,7 +265,7 @@ class WillingnessEnvironment(BaseEnvironment):
 
         # Alternative, make willingness to adapt random
         x = self._rng.random()
-        adaptation = x * adaptation / 25
+        adaptation = x * adaptation / 10
         adaptation = pd.Series(adaptation, index=agents.index)
 
         adaptation = pd.concat([current_adaptation, adaptation])
