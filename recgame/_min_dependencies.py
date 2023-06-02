@@ -15,9 +15,11 @@ dependent_packages = {
     "matplotlib": (MATPLOTLIB_MIN_VERSION, "install"),
     "cplex": ("22.1.0.0", "install"),
     "prettytable": ("3.6.0", "install"),
+    "pytest-cov": ("3.0.0", "tests"),
     "flake8": ("3.8.2", "tests"),
     "black": ("22.3", "tests"),
     "pylint": ("2.12.2", "tests"),
+    "coverage": ("6.2", "tests"),
 }
 
 # create inverse mapping for setuptools
