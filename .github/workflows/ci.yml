@@ -25,7 +25,7 @@ jobs:
 
       - name: Install linters
         run: |
-          BLACK=$(python rgame/_min_dependencies.py black)
+          BLACK=$(python recgame/_min_dependencies.py black)
           pip install pytest mypy==0.782 black==$BLACK
       - name: Run black
         run: |
