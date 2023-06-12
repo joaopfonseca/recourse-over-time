@@ -20,6 +20,7 @@ dependent_packages = {
     "black": ("22.3", "tests"),
     "pylint": ("2.12.2", "tests"),
     "coverage": ("6.2", "tests"),
+    "numpydoc": ("1.0.0", "docs, tests"),
 }
 
 # create inverse mapping for setuptools

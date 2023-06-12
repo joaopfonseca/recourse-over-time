@@ -8,6 +8,8 @@ class BaseRecourse(ABC):
     Base class to define recourse methods.
     """
 
+    _estimator_type = "recourse"
+
     def __init__(self, model, threshold=0.5):
         self.model = model
         self.threshold = threshold

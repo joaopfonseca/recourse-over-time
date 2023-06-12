@@ -172,75 +172,75 @@ DEFAULT_CPLEX_PARAMETERS = {
     #
     "mipemphasis": 0,
     # Controls trade-offs between speed, feasibility, optimality, and moving bounds in MIP.
-    # 0     =	Balance optimality and feasibility; default
-    # 1	    =	Emphasize feasibility over optimality
-    # 2	    =	Emphasize optimality over feasibility
-    # 3 	=	Emphasize moving best bound
-    # 4	    =	Emphasize finding hidden feasible solutions
+    # 0 = Balance optimality and feasibility; default
+    # 1 = Emphasize feasibility over optimality
+    # 2 = Emphasize optimality over feasibility
+    # 3 = Emphasize moving best bound
+    # 4 = Emphasize finding hidden feasible solutions
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/MIPEmphasis.html
     #
     "bound_strengthening": -1,
     # Decides whether to apply bound strengthening in mixed integer programs (MIPs).
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/BndStrenInd.html
-    # -1    = cplex chooses
-    # 0     = no bound strengthening
-    # 1     = bound strengthening
+    # -1 = cplex chooses
+    # 0  = no bound strengthening
+    # 1  = bound strengthening
     #
     "cover_cuts": -1,
     # Decides whether or not cover cuts should be generated for the problem.
     # https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/Covers.html
-    # -1    = Do not generate cover cuts
-    # 0	    = Automatic: let CPLEX choose
-    # 1	    = Generate cover cuts moderately
-    # 2	    = Generate cover cuts aggressively
-    # 3     = Generate cover cuts very  aggressively
+    # -1 = Do not generate cover cuts
+    # 0  = Automatic: let CPLEX choose
+    # 1  = Generate cover cuts moderately
+    # 2  = Generate cover cuts aggressively
+    # 3  = Generate cover cuts very  aggressively
     #
     "zero_half_cuts": -1,
     # Decides whether or not to generate zero-half cuts for the problem. (set to off since these are not effective)
     # https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ZeroHalfCuts.html
-    # -1    = Do not generate MIR cuts
-    # 0	    = Automatic: let CPLEX choose
-    # 1	    = Generate MIR cuts moderately
-    # 2	    = Generate MIR cuts aggressively
+    # -1 = Do not generate MIR cuts
+    # 0  = Automatic: let CPLEX choose
+    # 1  = Generate MIR cuts moderately
+    # 2  = Generate MIR cuts aggressively
     #
     "mir_cuts": -1,
     # Decides whether or not to generate mixed-integer rounding cuts for the problem. (set to off since these are not effective)
     # https://www.ibm.com/support/knowledgecenter/en/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/MIRCuts.html
-    # -1    = Do not generate zero-half cuts
-    # 0	    = Automatic: let CPLEX choose; default
-    # 1	    = Generate zero-half cuts moderately
-    # 2	    = Generate zero-half cuts aggressively
+    # -1 = Do not generate zero-half cuts
+    # 0  = Automatic: let CPLEX choose; default
+    # 1  = Generate zero-half cuts moderately
+    # 2  = Generate zero-half cuts aggressively
     #
     "implied_bound_cuts": 0,
     # Decides whether or not to generate valid implied bound cuts for the problem.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ImplBdLocal.html
-    # -1    = Do not generate locally valid implied bound cuts
-    # 0	    = Automatic: let CPLEX choose; default
-    # 1	    = Generate locally valid implied bound cuts moderately
-    # 2	    = Generate locally valid implied bound cuts aggressively
-    # 3	    = Generate locally valid implied bound cuts very aggressively
+    # -1 = Do not generate locally valid implied bound cuts
+    # 0  = Automatic: let CPLEX choose; default
+    # 1  = Generate locally valid implied bound cuts moderately
+    # 2  = Generate locally valid implied bound cuts aggressively
+    # 3  = Generate locally valid implied bound cuts very aggressively
     #
     "locally_implied_bound_cuts": 3,
     # Decides whether or not to generate locally valid implied bound cuts for the problem.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ImplBdLocal.html
-    # -1    = Do not generate locally valid implied bound cuts
-    # 0	    = Automatic: let CPLEX choose; default
-    # 1	    = Generate locally valid implied bound cuts moderately
-    # 2	    = Generate locally valid implied bound cuts aggressively
-    # 3	    = Generate locally valid implied bound cuts very aggressively
+    # -1 = Do not generate locally valid implied bound cuts
+    # 0  = Automatic: let CPLEX choose; default
+    # 1  = Generate locally valid implied bound cuts moderately
+    # 2  = Generate locally valid implied bound cuts aggressively
+    # 3  = Generate locally valid implied bound cuts very aggressively
     #
     "scale_parameters": 0,
     # Decides how to scale the problem matrix.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/ScaInd.html
-    # 0     = equilibration scaling
-    # 1     = aggressive scaling
-    # -1    = no scaling
+    # 0  = equilibration scaling
+    # 1  = aggressive scaling
+    # -1 = no scaling
     #
     "numerical_emphasis": 0,
     # Emphasizes precision in numerically unstable or difficult problems.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/NumericalEmphasis.html
-    # 0     = off
-    # 1     = on
+    # 0  = off
+    # 1  = on
     #
     "poolsize": 100,
     # Limits the number of solutions kept in the solution pool
@@ -254,16 +254,16 @@ DEFAULT_CPLEX_PARAMETERS = {
     "poolreplace": 2,
     # Designates the strategy for replacing a solution in the solution pool when the solution pool has reached its capacity.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/SolnPoolReplace.html
-    # 0	= Replace the first solution (oldest) by the most recent solution; first in, first out; default
-    # 1	= Replace the solution which has the worst objective
-    # 2	= Replace solutions in order to build a set of diverse solutions
+    # 0 = Replace the first solution (oldest) by the most recent solution; first in, first out; default
+    # 1 = Replace the solution which has the worst objective
+    # 2 = Replace solutions in order to build a set of diverse solutions
     #
     "repairtries": 20,
     # Limits the attempts to repair an infeasible MIP start.
     # https://www.ibm.com/support/knowledgecenter/SSSA5P_12.8.0/ilog.odms.cplex.help/CPLEX/Parameters/topics/RepairTries.html
-    # -1	None: do not try to repair
-    #  0	Automatic: let CPLEX choose; default
-    #  N	Number of attempts
+    # -1 None: do not try to repair
+    #  0 Automatic: let CPLEX choose; default
+    #  N Number of attempts
     #
     "nodefilesize": (120 * 1024) / 1,
     # size of the node file (for large scale problems)
@@ -576,12 +576,12 @@ def add_mip_start_cpx(cpx, solution, effort_level=1, name=None):
     """
     :param cpx: Cplex object
     :param solution: solution vector (list or np.array)
-    :param effort_level:    (must be one of the values of mip.MIP_starts.effort_level)
-                            1 <-> check_feasibility
-                            2 <-> solve_fixed
-                            3 <-> solve_MIP
-                            4 <-> repair
-                            5 <-> no_check
+    :param effort_level: (must be one of the values of mip.MIP_starts.effort_level)
+    - 1 <-> check_feasibility
+    - 2 <-> solve_fixed
+    - 3 <-> solve_MIP
+    - 4 <-> repair
+    - 5 <-> no_check
     :param name: name to identify the solution
     :return: Cplex object
     """

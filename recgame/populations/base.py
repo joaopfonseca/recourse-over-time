@@ -51,6 +51,8 @@ class BasePopulation(ABC):
     - [] Allow entering data as numpy array (?)
     """
 
+    _estimator_type = "population"
+
     def __init__(
         self,
         data: pd.DataFrame,

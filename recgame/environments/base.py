@@ -66,6 +66,8 @@ class BaseEnvironment(ABC):
     -
     """
 
+    _estimator_type = "environment"
+
     def __init__(
         self,
         population,
