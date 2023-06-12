@@ -18,3 +18,13 @@ def generate_synthetic_data(n_agents, n_continuous, n_categorical, random_state)
     y = rng.integers(0, 2, n_agents)
 
     return X, y, categorical
+
+
+def numpy_to_pandas(obj):
+    """
+    Checks if a given object is a numpy array. If so, converts it to a pandas dataframe.
+    """
+    if isinstance(obj, np.ndarray):
+        obj = pd.DataFrame(obj, columns=np.array(list(range(obj.shape[1])), dtype=str))
+
+    return obj

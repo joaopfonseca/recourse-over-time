@@ -123,7 +123,7 @@ class BaseEnvironment(ABC):
             self.adaptation_ = self._update_adaptation()
 
         if not hasattr(self, "_max_id"):
-            self._max_id = self.population_.data.index.max()
+            self._max_id = self.population_.X.index.max()
 
     def _update_threshold(self):
         threshold = (
@@ -134,17 +134,17 @@ class BaseEnvironment(ABC):
 
         if self.threshold_type == "dynamic":
             self.threshold_index_ = int(
-                np.round(threshold * self.population_.data.shape[0])
+                np.round(threshold * self.population_.X.shape[0])
             )
-            probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
+            probabilities = self.model_.predict_proba(self.population_.X)[:, 1]
             threshold_ = probabilities[np.argsort(probabilities)][self.threshold_index_]
 
         elif self.threshold_type == "absolute":
-            self.threshold_index_ = self.population_.data.shape[0] - threshold
+            self.threshold_index_ = self.population_.X.shape[0] - threshold
             if self.threshold_index_ < 0:
-                self.threshold_index_ = self.population_.data.shape[0] - 1
+                self.threshold_index_ = self.population_.X.shape[0] - 1
 
-            probabilities = self.model_.predict_proba(self.population_.data)[:, 1]
+            probabilities = self.model_.predict_proba(self.population_.X)[:, 1]
             threshold_ = (
                 probabilities[np.argsort(probabilities)][self.threshold_index_]
                 if threshold != 0
@@ -177,15 +177,13 @@ class BaseEnvironment(ABC):
 
         if self.adaptation_type == "gaussian":
             # adaptation are the standard deviations for each agent's gaussian
-            scores = self.model_.predict_proba(self.population_.data)[:, 1]
+            scores = self.model_.predict_proba(self.population_.X)[:, 1]
             threshold = self.threshold_
             x = threshold - scores
             adaptation = (adaptation) / (10 * np.exp(5 * x))
 
         elif self.adaptation_type == "binary":
-            adaptation = self._rng.binomial(
-                1, adaptation, self.population_.data.shape[0]
-            )
+            adaptation = self._rng.binomial(1, adaptation, self.population_.X.shape[0])
 
         elif self.adaptation_type == "binary_fixed":
             idx = np.where(self.scores_ < self.threshold_)[0]
@@ -194,14 +192,14 @@ class BaseEnvironment(ABC):
             if idx.shape[0] > int(adaptation):
                 idx = self._rng.choice(idx, size=int(adaptation), replace=False)
 
-            adaptation = np.zeros(self.population_.data.shape[0], dtype=int)
+            adaptation = np.zeros(self.population_.X.shape[0], dtype=int)
             adaptation[idx] = 1
 
         elif self.adaptation_type == "stepwise":
             # No action needed - elif included for clarification
             pass
 
-        return pd.Series(adaptation, index=self.population_.data.index)
+        return pd.Series(adaptation, index=self.population_.X.index)
 
     def _update_growth_rate(self):
         """Must return the number of agents to add."""
@@ -214,7 +212,7 @@ class BaseEnvironment(ABC):
         if self.growth_rate_type == "absolute":
             growth_k = int(np.round(growth_rate))
         elif self.growth_rate_type == "relative":
-            growth_k = int(np.round(self.population_.data.shape[0] * growth_rate))
+            growth_k = int(np.round(self.population_.X.shape[0] * growth_rate))
         return growth_k
 
     def predict(self, population=None, step=None, return_scores=False):
@@ -241,7 +239,7 @@ class BaseEnvironment(ABC):
 
         # Output should consider threshold and return a single value per
         # observation
-        probs = self.model_.predict_proba(population.data)[:, 1]
+        probs = self.model_.predict_proba(population.X)[:, 1]
         if self.threshold_type in ["dynamic", "absolute"]:
             pred = np.zeros(probs.shape, dtype=int)
             idx = np.argsort(probs)[threshold_idx:]
@@ -251,11 +249,11 @@ class BaseEnvironment(ABC):
 
         if return_scores:
             return (
-                pd.Series(pred, index=population.data.index),
-                pd.Series(probs, index=population.data.index),
+                pd.Series(pred, index=population.X.index),
+                pd.Series(probs, index=population.X.index),
             )
         else:
-            return pd.Series(pred, index=population.data.index)
+            return pd.Series(pred, index=population.X.index)
 
     def counterfactual(self, population=None, step=None):
         """
@@ -271,14 +269,14 @@ class BaseEnvironment(ABC):
             self.threshold_ if step is None else self.metadata_[step]["threshold"]
         )
         if np.isnan(threshold):
-            return population.data
+            return population.X
         else:
             self.recourse.threshold = threshold
             return self.recourse.counterfactual(population)
 
     def _counterfactual_gaussian_vectors(self, factuals, counterfactuals):
         score_change = np.abs(self._rng.normal(loc=0, scale=self.adaptation_))
-        curr_scores = self.model_.predict_proba(self.population_.data)[:, 1]
+        curr_scores = self.model_.predict_proba(self.population_.X)[:, 1]
         target_scores = np.clip(curr_scores + score_change, 0, 0.999)
 
         # Get base vectors
@@ -339,7 +337,7 @@ class BaseEnvironment(ABC):
 
     def remove_agents(self, mask):
         indices = np.where(~mask.astype(bool))[0]
-        self.population_.data = self.population_.data.iloc[indices]
+        self.population_.X = self.population_.X.iloc[indices]
         self.adaptation_ = self.adaptation_.iloc[indices]
         return self
 
@@ -351,7 +349,7 @@ class BaseEnvironment(ABC):
         counterfactuals.
         """
         # Get factuals + counterfactuals
-        factuals = self.population_.data
+        factuals = self.population_.X
         counterfactuals = self.counterfactual()
 
         # Get adaptation rate for all agents
@@ -404,17 +402,17 @@ class BaseEnvironment(ABC):
 
         # Adapt agents
         new_factuals, factuals, counterfactuals = self.adapt_agents(
-            population=self.population_.data
+            population=self.population_.X
         )
-        self.population_.data = new_factuals
+        self.population_.X = new_factuals
 
         # Add new agents
         self._new_agents = self.add_agents(self.growth_k_)
         self._new_agents.index = range(
             self._max_id + 1, self._max_id + self._new_agents.shape[0] + 1
         )
-        self.population_.data = pd.concat([self.population_.data, self._new_agents])
-        self._max_id = self.population_.data.index.max()
+        self.population_.X = pd.concat([self.population_.X, self._new_agents])
+        self._max_id = self.population_.X.index.max()
 
         # Update variables
         self.growth_k_ = self._update_growth_rate()
@@ -445,7 +443,7 @@ class BaseEnvironment(ABC):
             (self.metadata_[step - 1]["adaptation"] > 0)
             & (~self.metadata_[step - 1]["outcome"].astype(bool))
             & (
-                self.model_.predict_proba(self.metadata_[step - 1]["population"].data)[
+                self.model_.predict_proba(self.metadata_[step - 1]["population"].X)[
                     :, 1
                 ]
                 < self.metadata_[step - 1]["threshold"]
@@ -538,7 +536,7 @@ class BaseEnvironment(ABC):
           obtain a positive outcome.
         """
         idx = {
-            step: meta["population"].data.index for step, meta in self.metadata_.items()
+            step: meta["population"].X.index for step, meta in self.metadata_.items()
         }
 
         # entered_step
@@ -655,8 +653,8 @@ class BaseEnvironment(ABC):
             threshold_drift = (threshold - threshold_prev) / threshold_prev
 
             # Number of new agents
-            idx_prev = self.metadata_[step - 1]["population"].data.index
-            idx = self.metadata_[step]["population"].data.index
+            idx_prev = self.metadata_[step - 1]["population"].X.index
+            idx = self.metadata_[step]["population"].X.index
             new_agents = idx[~idx.isin(idx_prev)].shape[0]
 
             # Probability of achieving a favorable outcome

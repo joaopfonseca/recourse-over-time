@@ -7,7 +7,7 @@ from ..utils import generate_synthetic_data
 
 
 def _add_agents(self, n_agents):
-    all_cols = self.population.data.columns
+    all_cols = self.population.X.columns
     categorical = (
         [] if self.population.categorical is None else self.population.categorical
     )
@@ -23,7 +23,7 @@ def _add_agents(self, n_agents):
 
 
 # def _add_agents(self, n_agents):
-#     all_cols = self.population.data.columns
+#     all_cols = self.population.X.columns
 #     categorical = (
 #         [] if self.population.categorical is None else self.population.categorical
 #     )
@@ -36,10 +36,10 @@ def _add_agents(self, n_agents):
 #     )
 #     for col in categorical:
 #         # Use the original data to retrieve the distributions
-#         counts = self.population.data.groupby(col).size()
+#         counts = self.population.X.groupby(col).size()
 #         new_agents[col] = self._rng.choice(
 #             counts.index, size=n_agents, p=counts / counts.sum()
-#         ).astype(self.population_.data[col].dtype)
+#         ).astype(self.population_.X[col].dtype)
 #
 #     return new_agents
 
@@ -250,7 +250,7 @@ class WillingnessEnvironment(BaseEnvironment):
         current_adaptation = self.adaptation_ if hasattr(self, "adaptation_") else None
 
         agents = (
-            self._new_agents if hasattr(self, "_new_agents") else self.population_.data
+            self._new_agents if hasattr(self, "_new_agents") else self.population_.X
         )
 
         # Define their willingness to adapt based on initial score
@@ -270,7 +270,7 @@ class WillingnessEnvironment(BaseEnvironment):
 
         adaptation = pd.concat([current_adaptation, adaptation])
 
-        return pd.Series(adaptation, index=self.population_.data.index)
+        return pd.Series(adaptation, index=self.population_.X.index)
 
     def add_agents(self, n_agents):
         return _add_agents(self, n_agents)

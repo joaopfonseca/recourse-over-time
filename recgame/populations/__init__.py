@@ -1,4 +1,4 @@
 from .action_set import ActionSet
-from .base import BasePopulation
+from ._population import Population
 
-__all__ = ["BasePopulation", "ActionSet"]
+__all__ = ["Population", "ActionSet"]

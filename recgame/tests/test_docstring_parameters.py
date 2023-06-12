@@ -15,14 +15,12 @@ from sklearn.utils import IS_PYPY
 from sklearn.utils._testing import check_docstring_parameters
 from sklearn.utils._testing import _get_func_name
 from sklearn.utils._testing import ignore_warnings
-from sklearn.utils.estimator_checks import _enforce_estimator_tags_y
-from sklearn.utils.estimator_checks import _enforce_estimator_tags_X
-from sklearn.utils.estimator_checks import _construct_instance
 from sklearn.utils.deprecation import _is_deprecated
 
 import recgame
 from recgame.recourse import NFeatureRecourse
-from recgame.populations import BasePopulation
+from recgame.populations import Population
+from recgame.utils import numpy_to_pandas
 from recgame.utils._testing import all_environments, all_recourse, all_population
 
 
@@ -219,17 +217,20 @@ def test_fit_docstring_attributes(name, Estimator):
         n_classes=2,
         random_state=2,
     )
+    X = numpy_to_pandas(X)
 
     if is_environment(Estimator):
         clf = LogisticRegression(random_state=2).fit(X, y)
         est = Estimator(
-            population=BasePopulation(X),
+            population=Population(X),
             recourse=NFeatureRecourse(model=clf),
             random_state=2,
         )
     elif is_recourse(Estimator):
         clf = LogisticRegression(random_state=2).fit(X, y)
         est = Estimator(model=clf)
+    elif is_population(Estimator):
+        est = Estimator(X=X)
     else:
         raise TypeError(f"Could not recognize the object type of {Estimator}")
 
@@ -238,7 +239,7 @@ def test_fit_docstring_attributes(name, Estimator):
 
     if is_environment(est):
         est.update(1)
-    else:
+    elif is_recourse(est):
         est.counterfactual(X)
 
     skipped_attributes = set([])
