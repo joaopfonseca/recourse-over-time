@@ -1,28 +1,9 @@
 from abc import ABC
+from sklearn.base import BaseEstimator
 import pandas as pd
 
-# class Agent(ABC):
-#     """
-#     Defines a single agent playing within the environment.
-#
-#     Some relevant parameters will include:
-#     - Agent's personal info
-#     - Percentage of adaptation towards counterfactual
-#
-#     Attributes:
-#     - status: exited, out of or included in population
-#     - outcome: None, favorable, adverse
-#     """
-#
-#     def __init__(self):
-#         pass
-#
-#     def update(self):
-#         """Moves agent to the next timestep"""
-#         pass
 
-
-class BasePopulation(ABC):
+class BasePopulation(ABC, BaseEstimator):
     """
     Defines the population of agents within the environment.
 
@@ -55,13 +36,3 @@ class BasePopulation(ABC):
         X: pd.DataFrame,
     ):
         self.X = X
-
-    def set_params(self, **kwargs):
-        """
-        This should be used to add/update parameters. Use same approach as
-        sklearn's.
-        """
-        pass
-
-    def get_params(self):
-        pass

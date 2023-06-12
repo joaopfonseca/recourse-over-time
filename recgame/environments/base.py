@@ -5,12 +5,13 @@ from itertools import product
 from collections import Counter
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator
 from scipy.stats import binom, norm
 
 from ..visualization import EnvironmentPlot
 
 
-class BaseEnvironment(ABC):
+class BaseEnvironment(ABC, BaseEstimator):
     """
     Define the constraints in the environment. The central piece of the
     multi-agent analysis of algorithmic recourse.

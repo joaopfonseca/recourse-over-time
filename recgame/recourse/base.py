@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
+from sklearn.base import BaseEstimator
 from copy import deepcopy
 import numpy as np
 
 
-class BaseRecourse(ABC):
+class BaseRecourse(ABC, BaseEstimator):
     """
     Base class to define recourse methods.
     """
@@ -34,7 +35,7 @@ class BaseRecourse(ABC):
     def counterfactual(self, population):
         action_set = population.action_set_
 
-        counterfactual_examples = population.data.apply(
+        counterfactual_examples = population.X.apply(
             lambda agent: self._counterfactual(agent, action_set), axis=1
         )
 

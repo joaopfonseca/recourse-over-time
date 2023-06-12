@@ -72,6 +72,17 @@ def is_population(estimator):
     return False
 
 
+def _generate_data(self, n_agents):
+    X, y = make_classification(
+        n_samples=n_agents,
+        n_features=3,
+        n_redundant=0,
+        n_classes=2,
+        random_state=self._rng,
+    )
+    return numpy_to_pandas(X)
+
+
 # walk_packages() ignores DeprecationWarnings, now we need to ignore
 # FutureWarnings
 with warnings.catch_warnings():
@@ -221,6 +232,11 @@ def test_fit_docstring_attributes(name, Estimator):
 
     if is_environment(Estimator):
         clf = LogisticRegression(random_state=2).fit(X, y)
+
+        # monkey patch add_agents since the generative process is different from the
+        # default function
+        Estimator.add_agents = _generate_data
+
         est = Estimator(
             population=Population(X),
             recourse=NFeatureRecourse(model=clf),
@@ -238,7 +254,7 @@ def test_fit_docstring_attributes(name, Estimator):
         est.set_params(oob_score=True)
 
     if is_environment(est):
-        est.update(1)
+        est.update()
     elif is_recourse(est):
         est.counterfactual(X)
 
