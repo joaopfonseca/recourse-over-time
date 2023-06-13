@@ -78,7 +78,7 @@ def _generate_data(self, n_agents):
         n_features=3,
         n_redundant=0,
         n_classes=2,
-        random_state=self._rng,
+        random_state=self._rng.integers(10000),
     )
     return numpy_to_pandas(X)
 
