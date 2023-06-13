@@ -10,26 +10,23 @@ class ActionableRecourse(BaseRecourse):
     Otherwise, an explainability model should be used to retrieve coefficients
     for each observation.
 
-    Getting counterfactual is raising multiple warnings, this must be fixed
-    later.
-
     NOTE: Initially only linear models will be considered
 
     https://arxiv.org/pdf/1809.06514.pdf
     """
 
-    def __init__(
-        self, model, threshold=0.5, flipset_size=100, discretize=False, sample=False
-    ):
+    def __init__(self, model, threshold=0.5, flipset_size=100):
         self.model = model
         self.threshold = threshold
         self.flipset_size = flipset_size
-        self.discretize = discretize
-        self.sample = sample
 
     def _counterfactual(self, agent, action_set):
         factual = agent.values
         intercept, coefficients, model = self._get_coefficients()
+
+        # Do not change if the agent is over the threshold
+        if self.model.predict_proba(agent.to_frame().T)[0, -1] >= self.threshold:
+            return agent
 
         # Default counterfactual value if no action flips the prediction
         target_shape = factual.shape[0]
@@ -64,7 +61,7 @@ class ActionableRecourse(BaseRecourse):
         for action in actions:
             candidate_cf = agent + action
 
-            # Check if candidate counterfactual really flipps the prediction of
+            # Check if candidate counterfactual really flips the prediction of
             # ML model
             pred_cf = np.argmax(model.predict_proba(candidate_cf.to_frame().T))
             pred_f = np.argmax(model.predict_proba(agent.to_frame().T))
