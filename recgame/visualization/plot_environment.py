@@ -21,7 +21,7 @@ class EnvironmentPlot:
 
     def fit(self, X=None):
         if X is None:
-            X = self.environment.population.data
+            X = self.environment.population.X
 
         self.is_large_dim = X.shape[-1] > 2
 
@@ -101,9 +101,9 @@ class EnvironmentPlot:
         if step is None:
             step = self.environment.step_
 
-        df = self.environment.metadata_[step]["population"].data
+        df = self.environment.metadata_[step]["population"].X
         if step > 0:
-            df_prev = self.environment.metadata_[step - 1]["population"].data
+            df_prev = self.environment.metadata_[step - 1]["population"].X
 
         outcome = self.environment.predict(step=step).astype(bool)
 
@@ -195,7 +195,7 @@ class EnvironmentPlot:
             self.fit()
 
         df_list = [
-            (i, metadata["population"].data, metadata["threshold"])
+            (i, metadata["population"].X, metadata["threshold"])
             for i, metadata in self.environment.metadata_.items()
         ][min_step:max_step]
 
@@ -256,7 +256,7 @@ class EnvironmentPlot:
 
         return plt.hist(
             self.environment.model_.predict_proba(
-                self.environment.metadata_[step]["population"].data
+                self.environment.metadata_[step]["population"].X
             )[:, -1],
             **kwargs,
         )
@@ -272,7 +272,7 @@ class EnvironmentPlot:
 
         return pd.Series(
             self.environment.model_.predict_proba(
-                self.environment.metadata_[step]["population"].data
+                self.environment.metadata_[step]["population"].X
             )[:, -1]
         ).plot.kde(**kwargs)
 
@@ -293,7 +293,7 @@ class EnvironmentPlot:
         """
 
         pop_list = [
-            (i, metadata["population"].data.shape[0], metadata["outcome"].sum())
+            (i, metadata["population"].X.shape[0], metadata["outcome"].sum())
             for i, metadata in self.environment.metadata_.items()
         ][min_step:max_step]
 

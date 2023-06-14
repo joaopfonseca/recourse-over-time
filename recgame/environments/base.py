@@ -78,7 +78,7 @@ class BaseEnvironment(ABC, BaseEstimator):
         adaptation: Union[float, int, list, np.ndarray] = 1.0,
         adaptation_type: str = "stepwise",
         growth_rate: Union[float, int, list, np.ndarray] = 1.0,
-        growth_rate_type: str = "dynamic",
+        growth_rate_type: str = "relative",
         remove_winners: bool = True,
         random_state=None,
     ):
