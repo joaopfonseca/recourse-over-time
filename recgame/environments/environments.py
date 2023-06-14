@@ -29,6 +29,8 @@ class BankLoanApplication1(BaseEnvironment):
     - Dynamic threshold;
     - Binary adaptation;
     - Relative growth rate;
+
+    TODO: CHANGE PARAMETER NAMES
     """
 
     def __init__(
@@ -65,7 +67,11 @@ class BankLoanApplication2(BaseEnvironment):
     - Binary_fixed adaptation;
     - Absolute growth rate;
 
-    ``n_loans`` is the number of loans granted per time step
+    TODO: CHANGE PARAMETER NAMES
+
+    NOTE: threshold used to be n_loans
+    NOTE: growth_rate used to be new_agents
+    ``threshold`` is the number of loans granted per time step
     ``new_agents`` is the number of new applicants entering the environment
     """
 
@@ -73,19 +79,19 @@ class BankLoanApplication2(BaseEnvironment):
         self,
         population,
         recourse,
-        n_loans=10,
+        threshold=10,
         adaptation=20,
-        new_agents=10,
+        growth_rate=10,
         random_state=None,
     ):
         super().__init__(
             population=population,
             recourse=recourse,
-            threshold=n_loans,
+            threshold=threshold,
             threshold_type="absolute",
             adaptation=adaptation,
             adaptation_type="binary_fixed",
-            growth_rate=new_agents,
+            growth_rate=growth_rate,
             growth_rate_type="absolute",
             remove_winners=True,
             random_state=random_state,
@@ -103,7 +109,9 @@ class BankLoanApplication3(BaseEnvironment):
     - Gaussian adaptation;
     - Absolute growth rate;
 
-    ``n_loans`` is the number of loans granted per time step.
+    TODO: CHANGE PARAMETER NAMES
+
+    ``threshold`` is the number of loans granted per time step.
     ``new_agents`` is the number of new applicants entering the environment.
     ``adaptation`` adjusts the flexibility for agents to adapt.
     """
@@ -112,19 +120,19 @@ class BankLoanApplication3(BaseEnvironment):
         self,
         population,
         recourse,
-        n_loans=10,
+        threshold=10,
         adaptation=0.2,
-        new_agents=10,
+        growth_rate=10,
         random_state=None,
     ):
         super().__init__(
             population=population,
             recourse=recourse,
-            threshold=n_loans,
+            threshold=threshold,
             threshold_type="absolute",
             adaptation=adaptation,
             adaptation_type="gaussian",
-            growth_rate=new_agents,
+            growth_rate=growth_rate,
             growth_rate_type="absolute",
             remove_winners=True,
             random_state=random_state,
@@ -146,6 +154,10 @@ class WillingnessEnvironment(BaseEnvironment):
     - Willingness-based adaptation;
     - Absolute growth rate;
 
+    TODO: CHANGE PARAMETER NAMES
+    NOTE: threshold used to be n_loans
+    NOTE: growth_rate used to be new_agents
+
     ``willingness`` should be a numpy vector with individual willingness values.
     """
 
@@ -153,21 +165,21 @@ class WillingnessEnvironment(BaseEnvironment):
         self,
         population,
         recourse,
-        n_loans=10,
+        threshold=10,
         adaptation=0.2,
         willingness=None,
-        new_agents=10,
+        growth_rate=10,
         random_state=None,
     ):
         self.willingness = willingness
         super().__init__(
             population=population,
             recourse=recourse,
-            threshold=n_loans,
+            threshold=threshold,
             threshold_type="absolute",
             adaptation=adaptation,
             adaptation_type="gaussian",
-            growth_rate=new_agents,
+            growth_rate=growth_rate,
             growth_rate_type="absolute",
             remove_winners=True,
             random_state=random_state,

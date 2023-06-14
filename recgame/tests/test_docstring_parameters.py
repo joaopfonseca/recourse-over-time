@@ -256,7 +256,7 @@ def test_fit_docstring_attributes(name, Estimator):
     if is_environment(est):
         est.update()
     elif is_recourse(est):
-        est.counterfactual(X)
+        est.counterfactual(Population(X))
 
     skipped_attributes = set([])
 

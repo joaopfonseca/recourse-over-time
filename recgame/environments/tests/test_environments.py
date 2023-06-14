@@ -26,9 +26,9 @@ def test_environments(name, Environment):
     if name == "BankLoanApplication1":
         kwargs = {"threshold": 0.8, "adaptation": 0.2, "growth_rate": 0.2}
     elif name == "BankLoanApplication2":
-        kwargs = {"n_loans": 10, "adaptation": 15, "new_agents": 10}
+        kwargs = {"threshold": 10, "adaptation": 15, "growth_rate": 10}
     elif name in ["BankLoanApplication3", "WillingnessEnvironment"]:
-        kwargs = {"n_loans": 10, "adaptation": 0.5, "new_agents": 10}
+        kwargs = {"threshold": 10, "adaptation": 0.5, "growth_rate": 10}
     else:
         raise TypeError("Environment paramenters undefined.")
 
