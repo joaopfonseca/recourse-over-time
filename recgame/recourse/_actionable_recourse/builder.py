@@ -10,7 +10,7 @@ from collections import defaultdict
 import numpy as np
 
 from .utils import parse_classifier_args
-from ...populations.action_set import ActionSet
+from .._action_set import ActionSet
 from .cplex_helper import (
     Cplex,
     SparsePair,

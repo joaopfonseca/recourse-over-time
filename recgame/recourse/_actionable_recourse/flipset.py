@@ -6,7 +6,7 @@ https://github.com/ustunb/actionable-recourse/blob/master/recourse/flipset.py
 import numpy as np
 import pandas as pd
 from .utils import parse_classifier_args
-from ...populations import ActionSet
+from .._action_set import ActionSet
 from .builder import RecourseBuilder
 
 
@@ -335,7 +335,7 @@ class Flipset(object):
                 "text-shadow: 0px 1px 1px #4d4d4d; color: 'black'; font: 30px 'LeagueGothicRegular'; background-color:"
                 + cfpb_color
             )
-            ## style 1
+            # style 1
             html = (
                 pd.DataFrame([{"outcome": "No Recourse"}])
                 .style.set_table_styles(
@@ -345,7 +345,7 @@ class Flipset(object):
                 .hide_index()
                 .render()
             )
-            ## style 2
+            # style 2
             html = '<span style="' + style + '">No Recourse</span>'
             return html
 

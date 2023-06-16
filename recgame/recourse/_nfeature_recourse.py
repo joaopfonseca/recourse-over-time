@@ -1,13 +1,31 @@
 import warnings
+from typing import Union
 import numpy as np
 from .base import BaseRecourse
 
 
 class NFeatureRecourse(BaseRecourse):
-    def __init__(self, model, n_features=None, threshold=0.5):
-        self.model = model
+    """TODO: Add documentation."""
+
+    def __init__(
+        self,
+        model,
+        n_features: int = None,
+        threshold=0.5,
+        categorical: Union[list, np.ndarray] = None,
+        immutable: Union[list, np.ndarray] = None,
+        step_direction: dict = None,
+        y_desired: Union[int, str] = 1,
+    ):
+        super().__init__(
+            model=model,
+            threshold=threshold,
+            categorical=categorical,
+            immutable=immutable,
+            step_direction=step_direction,
+            y_desired=y_desired
+        )
         self.n_features = n_features
-        self.threshold = threshold
 
     def _counterfactual(self, agent, action_set):
         agent = agent.copy()

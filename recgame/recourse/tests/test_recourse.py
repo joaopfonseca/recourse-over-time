@@ -1,7 +1,6 @@
 import pytest
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from recgame.populations import Population
 from recgame.utils import generate_synthetic_data
 from recgame.utils._testing import all_recourse
 
@@ -16,8 +15,7 @@ df, y, _ = generate_synthetic_data(
 @pytest.mark.parametrize("name, Estimator", all_recourse())
 def test_all_recourse(name, Estimator):
     clf = LogisticRegression().fit(df, y)
-    pop = Population(df)
     recourse = Estimator(model=clf, threshold=THRESHOLD)
-    counterfactuals = recourse.counterfactual(pop)
+    counterfactuals = recourse.counterfactual(df)
     assert ~np.isnan(counterfactuals.values).any()
     assert (clf.predict_proba(counterfactuals)[:, -1] >= THRESHOLD).all()

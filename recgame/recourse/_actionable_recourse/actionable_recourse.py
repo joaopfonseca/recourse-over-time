@@ -1,4 +1,5 @@
-import logging
+import warnings
+from typing import Union
 import numpy as np
 from .flipset import Flipset
 from ..base import BaseRecourse
@@ -10,14 +11,29 @@ class ActionableRecourse(BaseRecourse):
     Otherwise, an explainability model should be used to retrieve coefficients
     for each observation.
 
-    NOTE: Initially only linear models will be considered
+    NOTE: Only linear models can be used.
 
     https://arxiv.org/pdf/1809.06514.pdf
     """
 
-    def __init__(self, model, threshold=0.5, flipset_size=100):
-        self.model = model
-        self.threshold = threshold
+    def __init__(
+        self,
+        model,
+        threshold=0.5,
+        categorical: Union[list, np.ndarray] = None,
+        immutable: Union[list, np.ndarray] = None,
+        step_direction: dict = None,
+        y_desired: Union[int, str] = 1,
+        flipset_size: int = 100
+    ):
+        super().__init__(
+            model=model,
+            threshold=threshold,
+            categorical=categorical,
+            immutable=immutable,
+            step_direction=step_direction,
+            y_desired=y_desired,
+        )
         self.flipset_size = flipset_size
 
     def _counterfactual(self, agent, action_set):
@@ -48,11 +64,11 @@ class ActionableRecourse(BaseRecourse):
         try:
             fs_pop = fs.populate(total_items=self.flipset_size)
         except (ValueError, KeyError):
-            logging.warning(
+            warnings.warn(
                 "Actionable Recourse is not able to produce a counterfactual"
                 " explanation for instance {}".format(agent.index)
             )
-            logging.warning(factual)
+            warnings.warn(factual)
             return counterfactual
 
         # Get actions to flip predictions
