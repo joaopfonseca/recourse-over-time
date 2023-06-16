@@ -1,4 +1,3 @@
-from typing import Union
 from copy import deepcopy
 import numpy as np
 import pandas as pd
@@ -7,10 +6,8 @@ from ..utils import generate_synthetic_data
 
 
 def _add_agents(self, n_agents):
-    all_cols = self.population.X.columns
-    categorical = (
-        [] if self.population.categorical is None else self.population.categorical
-    )
+    all_cols = self.X.columns
+    categorical = [] if self.recourse.categorical is None else self.recourse.categorical
     continuous = all_cols.drop(categorical)
 
     X, _, _ = generate_synthetic_data(
@@ -35,7 +32,7 @@ class BankLoanApplication1(BaseEnvironment):
 
     def __init__(
         self,
-        population,
+        X,
         recourse,
         threshold=0.8,
         adaptation=0.2,
@@ -43,7 +40,7 @@ class BankLoanApplication1(BaseEnvironment):
         random_state=None,
     ):
         super().__init__(
-            population=population,
+            X=X,
             recourse=recourse,
             threshold=threshold,
             threshold_type="dynamic",
@@ -77,7 +74,7 @@ class BankLoanApplication2(BaseEnvironment):
 
     def __init__(
         self,
-        population,
+        X,
         recourse,
         threshold=10,
         adaptation=20,
@@ -85,7 +82,7 @@ class BankLoanApplication2(BaseEnvironment):
         random_state=None,
     ):
         super().__init__(
-            population=population,
+            X=X,
             recourse=recourse,
             threshold=threshold,
             threshold_type="absolute",
@@ -118,7 +115,7 @@ class BankLoanApplication3(BaseEnvironment):
 
     def __init__(
         self,
-        population,
+        X,
         recourse,
         threshold=10,
         adaptation=0.2,
@@ -126,7 +123,7 @@ class BankLoanApplication3(BaseEnvironment):
         random_state=None,
     ):
         super().__init__(
-            population=population,
+            X=X,
             recourse=recourse,
             threshold=threshold,
             threshold_type="absolute",
@@ -163,7 +160,7 @@ class WillingnessEnvironment(BaseEnvironment):
 
     def __init__(
         self,
-        population,
+        X,
         recourse,
         threshold=10,
         adaptation=0.2,
@@ -173,7 +170,7 @@ class WillingnessEnvironment(BaseEnvironment):
     ):
         self.willingness = willingness
         super().__init__(
-            population=population,
+            X=X,
             recourse=recourse,
             threshold=threshold,
             threshold_type="absolute",
@@ -205,9 +202,7 @@ class WillingnessEnvironment(BaseEnvironment):
         )
         current_adaptation = self.adaptation_ if hasattr(self, "adaptation_") else None
 
-        agents = (
-            self._new_agents if hasattr(self, "_new_agents") else self.population_.X
-        )
+        agents = self._new_agents if hasattr(self, "_new_agents") else self.X_
 
         # Define their willingness to adapt based on initial score
         # scores = self.model_.predict_proba(agents)[:, 1]
@@ -226,7 +221,7 @@ class WillingnessEnvironment(BaseEnvironment):
 
         adaptation = pd.concat([current_adaptation, adaptation])
 
-        return pd.Series(adaptation, index=self.population_.X.index)
+        return pd.Series(adaptation, index=self.X_.index)
 
     def add_agents(self, n_agents):
         return _add_agents(self, n_agents)

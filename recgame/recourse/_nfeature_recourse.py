@@ -23,7 +23,7 @@ class NFeatureRecourse(BaseRecourse):
             categorical=categorical,
             immutable=immutable,
             step_direction=step_direction,
-            y_desired=y_desired
+            y_desired=y_desired,
         )
         self.n_features = n_features
 

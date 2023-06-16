@@ -24,7 +24,7 @@ class ActionableRecourse(BaseRecourse):
         immutable: Union[list, np.ndarray] = None,
         step_direction: dict = None,
         y_desired: Union[int, str] = 1,
-        flipset_size: int = 100
+        flipset_size: int = 100,
     ):
         super().__init__(
             model=model,

@@ -74,37 +74,6 @@ def all_recourse(
     return _all_objs(BaseRecourse)
 
 
-def all_population(
-    type_filter=None,
-):
-    """Get a list of all recourse methods from recgame.
-
-    This function crawls the module and gets all classes that inherit
-    from BaseRecourse. Classes that are defined in test-modules are not
-    included.
-    By default meta_estimators are also not included.
-    This function is adapted from imblearn.
-
-    Parameters
-    ----------
-    type_filter : str, list of str, or None, default=None
-        Which kind of estimators should be returned. If None, no
-        filter is applied and all estimators are returned.  Possible
-        values are 'sampler' to get estimators only of these specific
-        types, or a list of these to get the estimators that fit at
-        least one of the types.
-
-    Returns
-    -------
-    estimators : list of tuples
-        List of (name, class), where ``name`` is the class name as string
-        and ``class`` is the actual type of the class.
-    """
-    from recgame.populations.base import BasePopulation
-
-    return _all_objs(BasePopulation)
-
-
 def _all_objs(
     base_class,
     type_filter=None,

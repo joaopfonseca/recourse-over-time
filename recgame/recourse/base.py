@@ -75,9 +75,7 @@ class BaseRecourse(ABC, BaseEstimator):
         step = {} if self.step_direction is None else self.step_direction
 
         if action_set is None:
-            action_set = ActionSet(
-                X=X, y_desired=self.y_desired, default_bounds=(0, 1)
-            )
+            action_set = ActionSet(X=X, y_desired=self.y_desired, default_bounds=(0, 1))
             for col in X.columns:
                 if col in immutable:
                     action_set[col].actionable = False

@@ -5,4 +5,8 @@ Multi-time step algorithmic recourse simulation framework presented in ...
 
 ## Installation
 
+## Environments
+
+## Algorithmic Recourse
+
 ## Funding

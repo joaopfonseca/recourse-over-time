@@ -19,9 +19,8 @@ from sklearn.utils.deprecation import _is_deprecated
 
 import recgame
 from recgame.recourse import NFeatureRecourse
-from recgame.populations import Population
 from recgame.utils import numpy_to_pandas
-from recgame.utils._testing import all_environments, all_recourse, all_population
+from recgame.utils._testing import all_environments, all_recourse
 
 
 def is_environment(estimator):
@@ -52,22 +51,6 @@ def is_recourse(estimator):
         True if estimator is a recourse method, otherwise False.
     """
     if estimator._estimator_type == "recourse":
-        return True
-    return False
-
-
-def is_population(estimator):
-    """Return True if the given estimator is a population method, False otherwise.
-    Parameters
-    ----------
-    estimator : object
-        Estimator to test.
-    Returns
-    -------
-    is_sampler : bool
-        True if estimator is a population method, otherwise False.
-    """
-    if estimator._estimator_type == "population":
         return True
     return False
 
@@ -208,9 +191,7 @@ def test_tabs():
         )
 
 
-@pytest.mark.parametrize(
-    "name, Estimator", [*all_environments(), *all_recourse(), *all_population()]
-)
+@pytest.mark.parametrize("name, Estimator", [*all_environments(), *all_recourse()])
 def test_fit_docstring_attributes(name, Estimator):
     pytest.importorskip("numpydoc")
     from numpydoc import docscrape
@@ -238,15 +219,13 @@ def test_fit_docstring_attributes(name, Estimator):
         Estimator.add_agents = _generate_data
 
         est = Estimator(
-            population=Population(X),
+            X=X,
             recourse=NFeatureRecourse(model=clf),
             random_state=2,
         )
     elif is_recourse(Estimator):
         clf = LogisticRegression(random_state=2).fit(X, y)
         est = Estimator(model=clf)
-    elif is_population(Estimator):
-        est = Estimator(X=X)
     else:
         raise TypeError(f"Could not recognize the object type of {Estimator}")
 
@@ -256,7 +235,7 @@ def test_fit_docstring_attributes(name, Estimator):
     if is_environment(est):
         est.update()
     elif is_recourse(est):
-        est.counterfactual(Population(X))
+        est.counterfactual(X)
 
     skipped_attributes = set([])
 
