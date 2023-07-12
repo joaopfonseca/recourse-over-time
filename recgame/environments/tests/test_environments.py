@@ -6,6 +6,14 @@ from recgame.utils._testing import all_environments
 from recgame.recourse import NFeatureRecourse
 
 RANDOM_SEED = 42
+
+
+def data_source_func(n_agents):
+    return generate_synthetic_data(
+        n_agents=n_agents, n_continuous=3, n_categorical=0  # , random_state=RANDOM_SEED
+    )[0]
+
+
 df, y, _ = generate_synthetic_data(
     n_agents=100, n_continuous=3, n_categorical=0, random_state=RANDOM_SEED
 )
@@ -21,25 +29,28 @@ def test_environments(name, Environment):
         model=model,
     )
 
-    if name == "BankLoanApplication1":
-        kwargs = {"threshold": 0.8, "adaptation": 0.3, "growth_rate": 0.2}
-    elif name == "BankLoanApplication2":
-        kwargs = {"threshold": 10, "adaptation": 15, "growth_rate": 10}
-    elif name in ["BankLoanApplication3", "WillingnessEnvironment"]:
-        kwargs = {"threshold": 10, "adaptation": 0.5, "growth_rate": 10}
+    if name == "BaseEnvironment":
+        kwargs = {
+            "threshold": 0.8,
+            "threshold_type": "relative",
+            "adaptation": 0.3,
+            "behavior_function": "continuous_flexible",
+            "growth_rate": 0.2,
+            "growth_rate_type": "relative",
+        }
     else:
         raise TypeError("Environment paramenters undefined.")
 
     env = Environment(
         X=df,
         recourse=rec,
-        # n_favorable=10,  # TODO: uncomment this later on
+        data_source_func=data_source_func,
         random_state=RANDOM_SEED,
         **kwargs
     )
 
     assert env.step_ == 0
-    env.run_simulation(6)
+    env.simulate(6)
 
     assert env.X_.shape[0] == 100
     assert env.step_ == 6

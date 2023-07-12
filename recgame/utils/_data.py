@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def generate_synthetic_data(n_agents, n_continuous, n_categorical, random_state):
+def generate_synthetic_data(n_agents, n_continuous, n_categorical=0, random_state=None):
     """Generate synthetic data with normal distribution."""
     continuous = [f"f_{i}" for i in range(n_continuous)]
     categorical = [f"cat_{i}" for i in range(n_categorical)]

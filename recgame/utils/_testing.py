@@ -10,6 +10,7 @@ from pathlib import Path
 from operator import itemgetter
 
 from sklearn.utils._testing import ignore_warnings
+from imblearn.base import SamplerMixin
 
 
 def all_environments(
@@ -40,7 +41,7 @@ def all_environments(
     """
     from recgame.environments.base import BaseEnvironment
 
-    return _all_objs(BaseEnvironment)
+    return [("BaseEnvironment", BaseEnvironment), *_all_objs(BaseEnvironment)]
 
 
 def all_recourse(
