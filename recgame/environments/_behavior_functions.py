@@ -54,7 +54,7 @@ class BinaryConstant(BaseBehavior):
         cf_vectors = counterfactuals - factuals
 
         # Update existing agents' feature values
-        new_factuals = factuals + effort_rate * cf_vectors
+        new_factuals = factuals + effort_rate.values.reshape(-1, 1) * cf_vectors
         new_factuals = np.clip(
             new_factuals,
             action_set.lb,
@@ -71,9 +71,7 @@ class BinaryConstant(BaseBehavior):
         # Fetch environment variables
         rng = self.environment._rng
 
-        effort_rate = rng.binomial(1, global_adaptation, X.shape[0]).values.reshape(
-            -1, 1
-        )
+        effort_rate = rng.binomial(1, global_adaptation, X.shape[0])
         return pd.Series(effort_rate, index=X.index)
 
 

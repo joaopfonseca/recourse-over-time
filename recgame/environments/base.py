@@ -43,11 +43,6 @@ class BaseEnvironment(ABC, BaseEstimator):
     - growth_rate_type: can be absolute or relative
 
     - remove_winners: can be True, False
-
-    Attributes
-    ----------
-    - Current step
-    -
     """
 
     _estimator_type = "environment"
@@ -65,7 +60,7 @@ class BaseEnvironment(ABC, BaseEstimator):
         growth_rate: Union[float, int, list, np.ndarray] = 1.0,
         growth_rate_type: str = "relative",  # "absolute", "relative"
         remove_winners: bool = True,
-        random_state=None,
+        random_state: int = None,
     ):
         self.X = X
         self.recourse = recourse
@@ -143,9 +138,8 @@ class BaseEnvironment(ABC, BaseEstimator):
             "score": self.scores_,
             "threshold": self.threshold_,
             "growth_k": self.growth_k_,
+            "threshold_index": self.threshold_index_,
         }
-        if self.threshold_type in ["relative", "absolute"]:
-            self.metadata_[self.step_]["threshold_index"] = self.threshold_index_
 
     def set_params(self, **params):
         """
@@ -269,17 +263,17 @@ class BaseEnvironment(ABC, BaseEstimator):
 
         NOTE: Formerly predict
         """
-        if step is None:
-            step = self.step_
+        # if step is None:
+        #     step = self.step_
 
         threshold_idx = (
             self.metadata_[step]["threshold_index"]
-            if self.step_ != 0
+            if step is not None
             else self.threshold_index_
         )
 
         if X is None:
-            X = self.metadata_[step]["X"] if self.step_ != 0 else self.X_
+            X = self.metadata_[step]["X"] if step is not None else self.X_
 
         # Output should consider threshold and return a single value per
         # observation
