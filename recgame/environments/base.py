@@ -141,6 +141,21 @@ class BaseEnvironment(ABC, BaseEstimator):
             "threshold_index": self.threshold_index_,
         }
 
+    def _get_moving_agents(self, step):
+        """Get indices of agents that adapted between ``step-1`` and ``step``."""
+        if step == 0:
+            raise IndexError("Agents cannot move at the initial state (``step=0``).")
+
+        adapted = (
+            (self.metadata_[step - 1]["effort"] > 0)
+            & (~self.metadata_[step - 1]["outcome"].astype(bool))
+            & (
+                self.model_.predict_proba(self.metadata_[step - 1]["X"])[:, 1]
+                < self.metadata_[step - 1]["threshold"]
+            )
+        )
+        return adapted[adapted].index.values
+
     def set_params(self, **params):
         """
         Overwrite set_params function from scikit-learn to also update parameters passed

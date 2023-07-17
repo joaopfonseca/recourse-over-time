@@ -1,6 +1,7 @@
 import pytest
 from itertools import product
 import numpy as np
+import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from recgame.environments import BaseEnvironment
 from recgame.utils import generate_synthetic_data
@@ -9,6 +10,14 @@ from recgame.recourse import NFeatureRecourse
 from recgame.environments._behavior_functions import BEHAVIOR_FUNCTIONS
 
 RANDOM_SEED = 42
+ENV_KWARGS = {
+    "threshold": 0.8,
+    "threshold_type": "relative",
+    "adaptation": 0.3,
+    "behavior_function": "continuous_flexible",
+    "growth_rate": 0.2,
+    "growth_rate_type": "relative",
+}
 
 
 def data_source_func(n_agents):
@@ -17,8 +26,19 @@ def data_source_func(n_agents):
     )[0]
 
 
+def data_source_func_cat(n_agents):
+    df = pd.DataFrame(np.random.random((n_agents, 3)), columns=["a", "b", "c", "d"])
+    df["cat_1"] = np.random.integers(0, 2, n_agents)
+    df["cat_2"] = np.random.integers(0, 2, n_agents)
+    return df
+
+
 df, y, _ = generate_synthetic_data(
     n_agents=100, n_continuous=3, n_categorical=0, random_state=RANDOM_SEED
+)
+
+df2, _, _ = generate_synthetic_data(
+    n_agents=100, n_continuous=3, n_categorical=2, random_state=RANDOM_SEED
 )
 
 
@@ -28,20 +48,9 @@ def test_environments(name, Environment):
     Test general parameters in the different environments.
     """
     model = LogisticRegression(random_state=RANDOM_SEED).fit(df, y)
-    rec = NFeatureRecourse(
-        model=model,
-    )
+    rec = NFeatureRecourse(model=model)
 
-    if name == "BaseEnvironment":
-        kwargs = {
-            "threshold": 0.8,
-            "threshold_type": "relative",
-            "adaptation": 0.3,
-            "behavior_function": "continuous_flexible",
-            "growth_rate": 0.2,
-            "growth_rate_type": "relative",
-        }
-    else:
+    if name != "BaseEnvironment":
         raise TypeError("Environment paramenters undefined.")
 
     env = Environment(
@@ -49,7 +58,7 @@ def test_environments(name, Environment):
         recourse=rec,
         data_source_func=data_source_func,
         random_state=RANDOM_SEED,
-        **kwargs
+        **ENV_KWARGS
     )
 
     assert env.step_ == 0
@@ -60,6 +69,7 @@ def test_environments(name, Environment):
     assert (
         np.array([meta["threshold"] for meta in env.metadata_.values()]) >= 0.5
     ).all()
+    assert (env.X_.dtypes == env.X.dtypes).all()
 
 
 @pytest.mark.parametrize(
@@ -86,7 +96,28 @@ def test_absolute_params(threshold, growth_rate, behavior_function):
     env.simulate(3)
 
     assert env.X_.shape[0] == (df.shape[0] + env.step_ * (growth_rate - threshold))
+    assert (env.X_.dtypes == env.X.dtypes).all()
 
 
 # def test_remove_winners():
 #     """Test if remove winners parameter is working as intended."""
+
+
+@pytest.mark.parametrize("name, Environment", all_environments())
+def test_data_types(name, Environment):
+    model = LogisticRegression(random_state=RANDOM_SEED).fit(df, y)
+    rec = NFeatureRecourse(model=model, categorical=["cat_1", "cat_2"])
+
+    if name != "BaseEnvironment":
+        raise TypeError("Environment paramenters undefined.")
+
+    env = Environment(
+        X=df2,
+        recourse=rec,
+        data_source_func=data_source_func,
+        random_state=RANDOM_SEED,
+        **ENV_KWARGS
+    )
+
+    env.simulate()
+    assert (env.X_.dtypes == env.X.dtypes).all()

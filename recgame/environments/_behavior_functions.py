@@ -34,7 +34,7 @@ class BaseBehavior(BaseEstimator):
 
         # Get agents' behavior
         new_factuals = self.adaptation(factuals, counterfactuals, effort_rate)
-        return new_factuals, counterfactuals
+        return new_factuals
 
 
 class BinaryConstant(BaseBehavior):
@@ -76,6 +76,8 @@ class BinaryConstant(BaseBehavior):
 
 
 class ContinuousFlexible(BaseBehavior):
+    """Applies continuous adaptation with flexible effort."""
+
     def adaptation(self, factuals, counterfactuals, effort_rate):
         """
         Applies continuous adaptation.
@@ -87,7 +89,7 @@ class ContinuousFlexible(BaseBehavior):
         action_set = self.environment.recourse.action_set_
         rng = self.environment._rng
 
-        # Gent counterfactual vectors
+        # Get counterfactual vectors
         cf_vectors = self._counterfactual_continuous_vectors(
             factuals, counterfactuals, effort_rate, rng, model
         )
@@ -104,6 +106,7 @@ class ContinuousFlexible(BaseBehavior):
     ):
         score_change = np.abs(rng.normal(loc=0, scale=effort_rate))
         curr_scores = model.predict_proba(factuals)[:, 1]
+        cf_scores = model.predict_proba(counterfactuals)[:, 1]
         target_scores = np.clip(curr_scores + score_change, 0, 0.999)
 
         # Get base vectors
@@ -113,11 +116,13 @@ class ContinuousFlexible(BaseBehavior):
 
         # Get temporary logistic regressions.
         # Counterfactuals are assumed to be perceived as the minimum requirement to
-        # flip the outcome (i.e., E(y_{cf}) = 0.5). Hence, its linear transformation
-        # becomes zero.
+        # flip the outcome (i.e., E(y_{cf}) = threshold).
         curr_scores_lin = np.log(curr_scores / (1 - curr_scores))
+        cf_scores_lin = np.log(cf_scores / (1 - cf_scores))
 
-        alphas = -curr_scores_lin / (base_vectors * base_vectors).sum(1)
+        alphas = (cf_scores_lin - curr_scores_lin) / (base_vectors * base_vectors).sum(
+            1
+        )
         intercepts = curr_scores_lin - alphas * (base_vectors * factuals).sum(1)
         coefs = (
             np.repeat(np.expand_dims(alphas, axis=1), base_vectors.shape[1], axis=1)
@@ -154,11 +159,39 @@ class ContinuousFlexible(BaseBehavior):
         return pd.Series(effort_rate, index=X.index)
 
 
-# binary_flexible
+class ContinuousConstant(ContinuousFlexible):
+    """Applies continuous adaptation with constant effort."""
 
-# continuous_constant
+    def effort(self, X, global_adaptation):
+        """
+        Applies constant effort.
+
+        Returns effort rate.
+        """
+        # Fetch environment variables
+        rng = self.environment._rng
+
+        current_effort = self.effort_ if hasattr(self, "effort_") else None
+
+        df_new = (
+            self.environment._new_agents
+            if hasattr(self, "_new_agents")
+            else pd.DataFrame()
+        )
+
+        x = rng.random(df_new.shape[0])
+        effort_rate = x * global_adaptation / 10
+        effort_rate = pd.Series(effort_rate, index=df_new.index)
+        effort_rate = pd.concat([current_effort, effort_rate])
+
+        # return pd.Series(effort_rate, index=X.index)
+        return effort_rate
+
+
+# binary_flexible
 
 BEHAVIOR_FUNCTIONS = {
     "binary_constant": BinaryConstant,
+    "continuous_constant": ContinuousConstant,
     "continuous_flexible": ContinuousFlexible,
 }

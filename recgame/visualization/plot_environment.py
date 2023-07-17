@@ -105,7 +105,7 @@ class EnvironmentPlot:
         if step > 0:
             df_prev = self.environment.metadata_[step - 1]["X"]
 
-        outcome = self.environment.predict(step=step).astype(bool)
+        outcome = self.environment.metadata_[step]["outcome"].astype(bool)
 
         self._create_mesh_grid(df, mesh_size)
 
@@ -142,7 +142,7 @@ class EnvironmentPlot:
 
         # Visualize agents
         if step > 0:
-            move = self.environment._get_moving_agents(step)
+            move = self.environment.analysis._get_moving_agents(step)
 
             # Plot movement lines
             ax.plot(
@@ -195,17 +195,20 @@ class EnvironmentPlot:
             self.fit()
 
         df_list = [
-            (i, metadata["X"], metadata["threshold"])
+            (
+                i,
+                metadata["X"],
+                metadata["threshold"],
+                metadata["outcome"].astype(bool),
+                metadata["score"],
+            )
             for i, metadata in self.environment.metadata_.items()
         ][min_step:max_step]
 
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(10, 10))
 
-        for step, df, threshold in df_list:
-            prob = self.environment.model_.predict_proba(df)[:, -1]
-            outcome = self.environment.predict(step=step).astype(bool)
-
+        for step, df, threshold, outcome, prob in df_list:
             # Set up x coordinates to form swarm plots
             x = np.ones(df.shape[0], dtype=int) * step
             x = x + swarm(prob)

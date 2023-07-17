@@ -14,18 +14,18 @@ class EnvironmentAnalysis:
         if step == 0:
             raise IndexError("Agents cannot move at the initial state (``step=0``).")
 
+        env = self.environment
+
         adapted = (
-            (self.metadata_[step - 1]["adaptation"] > 0)
-            & (~self.metadata_[step - 1]["outcome"].astype(bool))
+            (env.metadata_[step - 1]["effort"] > 0)
+            & (~env.metadata_[step - 1]["outcome"].astype(bool))
             & (
-                self.model_.predict_proba(self.metadata_[step - 1]["X"])[:, 1]
-                < self.metadata_[step - 1]["threshold"]
+                env.model_.predict_proba(env.metadata_[step - 1]["X"])[:, 1]
+                < env.metadata_[step - 1]["threshold"]
             )
         )
         return adapted[adapted].index.values
 
-    # NOTE: THIS SECTION ONWARDS IS DEDICATED TO ANALYSIS.
-    #       THESE METHODS SHOULD BE IN THEIR OWN SUBMODULE.
     def success_rate(self, step, last_step=None):
         """
         For an agent to move, they need to have adaptation > 0, unfavorable outcome and
@@ -41,6 +41,8 @@ class EnvironmentAnalysis:
                 "yet)."
             )
 
+        env = self.environment
+
         steps = [step] if last_step is None else [s for s in range(step, last_step)]
         success_rates = []
         for step in steps:
@@ -49,7 +51,7 @@ class EnvironmentAnalysis:
 
             # Indices of agents above threshold (according to the last state)
             above_threshold = (
-                self.metadata_[step]["score"] >= self.metadata_[step - 1]["threshold"]
+                env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
 
@@ -57,7 +59,7 @@ class EnvironmentAnalysis:
             candidates = np.intersect1d(adapted, above_threshold)
 
             # Indices of all agents with favorable outcome
-            favorable_outcomes = self.metadata_[step]["outcome"].astype(bool)
+            favorable_outcomes = env.metadata_[step]["outcome"].astype(bool)
             favorable_outcomes = favorable_outcomes[favorable_outcomes].index.to_numpy()
 
             # Indices of agents that moved and have a favorable outcome
@@ -81,12 +83,14 @@ class EnvironmentAnalysis:
         if step == 0:
             raise IndexError("Cannot get threshold drift at ``step=0``.")
 
+        env = self.environment
+
         step = 1 if step is None else step
-        last_step = max(self.metadata_.keys()) if last_step is None else last_step
+        last_step = max(env.metadata_.keys()) if last_step is None else last_step
 
         steps = [step] if last_step is None else [s for s in range(step, last_step + 1)]
         steps = [step - 1] + steps
-        thresholds = [self.metadata_[step]["threshold"] for step in steps]
+        thresholds = [env.metadata_[step]["threshold"] for step in steps]
         threshold_drift = [
             (thresholds[i] - thresholds[i - 1]) / thresholds[i - 1]
             for i in range(1, len(thresholds))
@@ -108,7 +112,9 @@ class EnvironmentAnalysis:
         - n_failures: number of times agent adapted, crossed the threshold but didn't
           obtain a positive outcome.
         """
-        idx = {step: meta["X"].index for step, meta in self.metadata_.items()}
+        env = self.environment
+
+        idx = {step: meta["X"].index for step, meta in env.metadata_.items()}
 
         # entered_step
         entered = [
@@ -129,7 +135,7 @@ class EnvironmentAnalysis:
         df["n_adaptations"] = df["n_adaptations"].fillna(0).astype(int)
 
         # favorable_step
-        favorable = [(i, self.metadata_[i]["outcome"]) for i in idx.keys()]
+        favorable = [(i, env.metadata_[i]["outcome"]) for i in idx.keys()]
         favorable = pd.concat(
             [
                 pd.Series(i, index=outcome[outcome == 1].index, name="favorable_step")
@@ -140,14 +146,14 @@ class EnvironmentAnalysis:
 
         # original_score
         df["original_score"] = df.apply(
-            lambda row: self.metadata_[row["entered_step"]]["score"].loc[row.name],
+            lambda row: env.metadata_[row["entered_step"]]["score"].loc[row.name],
             axis=1,
         )
 
         # final_score
         df["final_score"] = df.apply(
             lambda row: (
-                self.metadata_[row["favorable_step"]]["score"].loc[row.name]
+                env.metadata_[row["favorable_step"]]["score"].loc[row.name]
                 if not np.isnan(row["favorable_step"])
                 else np.nan
             ),
@@ -161,11 +167,11 @@ class EnvironmentAnalysis:
                 continue
             adapted = self._get_moving_agents(step)
             above_threshold = (
-                self.metadata_[step]["score"] >= self.metadata_[step - 1]["threshold"]
+                env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
             candidates = np.intersect1d(adapted, above_threshold)
-            unfavorable = ~self.metadata_[step]["outcome"].astype(bool)
+            unfavorable = ~env.metadata_[step]["outcome"].astype(bool)
             unfavorable = unfavorable[unfavorable].index.to_numpy()
             failed = np.intersect1d(unfavorable, candidates)
             df.loc[failed, "n_failures"] += 1
@@ -191,8 +197,10 @@ class EnvironmentAnalysis:
         - success_proba: probability of an agent adapting towards its counterfactual to
           achieve a positive outcome.
         """
+        env = self.environment
+
         info = {}
-        for step in self.metadata_.keys():
+        for step in env.metadata_.keys():
             if step == 0:
                 continue
 
@@ -201,13 +209,13 @@ class EnvironmentAnalysis:
 
             # Number of agents that moved and crossed the threshold
             above_threshold = (
-                self.metadata_[step]["score"] >= self.metadata_[step - 1]["threshold"]
+                env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
             candidates = np.intersect1d(adapted, above_threshold)
 
             # Number of agents with favorable outcome
-            favorable_outcomes = self.metadata_[step]["outcome"].astype(bool)
+            favorable_outcomes = env.metadata_[step]["outcome"].astype(bool)
             favorable_outcomes = favorable_outcomes[favorable_outcomes].index.to_numpy()
 
             # Indices of agents that moved and have a favorable outcome
@@ -219,13 +227,13 @@ class EnvironmentAnalysis:
             )
 
             # Calculate threshold drift
-            threshold_prev = self.metadata_[step - 1]["threshold"]
-            threshold = self.metadata_[step]["threshold"]
+            threshold_prev = env.metadata_[step - 1]["threshold"]
+            threshold = env.metadata_[step]["threshold"]
             threshold_drift = (threshold - threshold_prev) / threshold_prev
 
             # Number of new agents
-            idx_prev = self.metadata_[step - 1]["X"].index
-            idx = self.metadata_[step]["X"].index
+            idx_prev = env.metadata_[step - 1]["X"].index
+            idx = env.metadata_[step]["X"].index
             new_agents = idx[~idx.isin(idx_prev)].shape[0]
 
             # Probability of achieving a favorable outcome
@@ -250,7 +258,7 @@ class EnvironmentAnalysis:
         Calculates the probability for a new agent to be above a given threshold,
         based on the distribution of previously added agents.
         """
-        scores = self.metadata_[0]["score"]
+        scores = self.environment.metadata_[0]["score"]
         return (scores >= threshold).astype(int).sum() / scores.shape[0]
 
     def n_new_agents_proba(self, n_above, new_agents=None, threshold=None, step=None):
@@ -259,13 +267,13 @@ class EnvironmentAnalysis:
         threshold within a set of newly-introduced agents, based on the distribution of
         previously added agents.
         """
-        step = self.step_ if step is None else step
+        step = self.environment.step_ if step is None else step
 
         if threshold is None:
-            threshold = self.metadata_[step]["threshold"]
+            threshold = self.environment.metadata_[step]["threshold"]
 
         if new_agents is None:
-            new_agents = self.metadata_[step]["growth_k"]
+            new_agents = self.environment.metadata_[step]["growth_k"]
 
         p = self.new_agent_proba(threshold)
         dist = binom(new_agents, p)
@@ -277,21 +285,26 @@ class EnvironmentAnalysis:
         threshold.
         """
         if step is None:
-            step = self.step_
+            step = self.environment.step_
 
-        scores = self.metadata_[step]["score"]
-        threshold = self.metadata_[step]["threshold"]
-        adaptation = self.metadata_[step]["adaptation"]
+        if type(self.environment.behavior_function) != str:
+            behavior_func_name = self.environment.behavior_function.__name__.lower()
+        else:
+            behavior_func_name = self.environment.behavior_function.lower()
+
+        scores = self.environment.metadata_[step]["score"]
+        threshold = self.environment.metadata_[step]["threshold"]
+        adaptation = self.environment.metadata_[step]["effort"]
 
         mask = scores < threshold
         scores = scores[mask]
         adaptation = adaptation[mask]
 
-        if self.adaptation_type in ["binary", "binary_fixed"]:
+        if behavior_func_name.startswith("binary"):
             p = adaptation.sum() / adaptation.shape[0]
-        elif self.adaptation_type == "gaussian":
+        elif behavior_func_name.startswith("continuous"):
             p = norm(loc=0, scale=adaptation).sf(threshold - scores) * 2
-        elif self.adaptation_type == "stepwise":
+        else:
             raise NotImplementedError()
 
         return pd.Series(p, index=scores.index)
@@ -306,7 +319,7 @@ class EnvironmentAnalysis:
         """
 
         if step is None:
-            step = self.step_
+            step = self.environment.step_
 
         p = self.moving_agent_proba(step)
         mean = p.sum()
@@ -332,14 +345,14 @@ class EnvironmentAnalysis:
         ``P(pos_outcome | delta_score = threshold - score)``.
         """
         if step is None:
-            step = self.step_
+            step = self.environment.step_
 
-        scores = self.metadata_[step]["score"]
-        threshold = self.metadata_[step]["threshold"]
-        n_pos = self.metadata_[step]["outcome"].sum()
+        scores = self.environment.metadata_[step]["score"]
+        threshold = self.environment.metadata_[step]["threshold"]
+        n_pos = self.environment.metadata_[step]["outcome"].sum()
 
         # Get all combinations of numbers of negative outcomes
-        new_agents = list(range(self.metadata_[step]["growth_k"] + 1))
+        new_agents = list(range(self.environment.metadata_[step]["growth_k"] + 1))
         adapting_agents = list(range((scores < threshold).sum() + 1))
         combinations = np.array(
             [(i, j) for i, j in product(new_agents, adapting_agents) if i + j < n_pos]
