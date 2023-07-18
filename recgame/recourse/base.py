@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Union
-import warnings
 from copy import deepcopy
 from sklearn.base import BaseEstimator
 import numpy as np
@@ -51,11 +50,6 @@ class BaseRecourse(ABC, BaseEstimator):
         """TODO: Add documentation"""
 
         if not hasattr(self, "action_set_"):
-            warnings.warn(
-                "Action set is being defined during counterfactual generation. If you "
-                "are using a subset of the data, this could lead to undesired "
-                "restrictions."
-            )
             self.set_actions(X=X, action_set=action_set)
 
         counterfactual_examples = X.apply(
