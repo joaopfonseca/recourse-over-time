@@ -104,9 +104,15 @@ class ContinuousFlexible(BaseBehavior):
     def _counterfactual_continuous_vectors(
         self, factuals, counterfactuals, effort_rate, rng, model
     ):
-        score_change = np.abs(rng.normal(loc=0, scale=effort_rate))
         curr_scores = model.predict_proba(factuals)[:, 1]
         cf_scores = model.predict_proba(counterfactuals)[:, 1]
+
+        # EXPERIMENTAL: RESCALE SCORES TO [0.1, 0.9]
+        curr_scores = curr_scores * 0.8 + 0.1
+        cf_scores = cf_scores * 0.8 + 0.1
+        # CHECK IF WORKS, OTHERWISE DELETE
+
+        score_change = np.abs(rng.normal(loc=0, scale=effort_rate))
         target_scores = np.clip(curr_scores + score_change, 0, 0.999)
 
         # Get base vectors
@@ -173,11 +179,7 @@ class ContinuousConstant(ContinuousFlexible):
 
         current_effort = self.effort_ if hasattr(self, "effort_") else None
 
-        df_new = (
-            self.environment._new_agents
-            if hasattr(self, "_new_agents")
-            else pd.DataFrame()
-        )
+        df_new = self.environment._new_agents if hasattr(self, "_new_agents") else X
 
         x = rng.random(df_new.shape[0])
         effort_rate = x * global_adaptation / 10
