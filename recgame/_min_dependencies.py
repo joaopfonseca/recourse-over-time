@@ -15,6 +15,7 @@ dependent_packages = {
     "matplotlib": (MATPLOTLIB_MIN_VERSION, "install"),
     "cplex": ("22.1.0.0", "install"),
     "prettytable": ("3.6.0", "install"),
+    "dice-ml": ("0.10", "optional"),
     "pytest-cov": ("3.0.0", "tests"),
     "flake8": ("3.8.2", "tests"),
     "black": ("22.3", "tests"),

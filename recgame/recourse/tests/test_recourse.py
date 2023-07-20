@@ -8,7 +8,7 @@ RANDOM_SEED = 42
 THRESHOLD = 0.52
 
 df, y, _ = generate_synthetic_data(
-    n_agents=50, n_continuous=4, n_categorical=0, random_state=RANDOM_SEED
+    n_agents=20, n_continuous=4, n_categorical=0, random_state=RANDOM_SEED
 )
 
 
