@@ -194,7 +194,7 @@ class EnvironmentPlot:
         legend=True,
         title=True,
         ax=None,
-        ref_model_step=None
+        ref_model_step=None,
     ):
         """Visualize population scores across multiple time steps."""
         if not hasattr(self, "_autoencoder"):
@@ -220,22 +220,20 @@ class EnvironmentPlot:
             df_list = [
                 (
                     i,
-
                     # X
                     metadata_[i]["X"],
-
                     # Threshold
-                    metadata_[ref_model_step]["model"].predict_proba(
-                        metadata_[i]["X"]
-                    )[:, 1][metadata_[i]["outcome"].astype(bool)].min(),
-
+                    metadata_[ref_model_step]["model"]
+                    .predict_proba(metadata_[i]["X"])[:, 1][
+                        metadata_[i]["outcome"].astype(bool)
+                    ]
+                    .min(),
                     # Outcome
                     metadata_[i]["outcome"].astype(bool),
-
                     # Score
-                    metadata_[ref_model_step]["model"].predict_proba(
-                        metadata_[i]["X"]
-                    )[:, 1],
+                    metadata_[ref_model_step]["model"].predict_proba(metadata_[i]["X"])[
+                        :, 1
+                    ],
                 )
                 for i in steps_list
             ]
@@ -295,9 +293,7 @@ class EnvironmentPlot:
         model = self.environment.metadata_[step]["model"]
 
         return plt.hist(
-            model.predict_proba(
-                self.environment.metadata_[step]["X"]
-            )[:, -1],
+            model.predict_proba(self.environment.metadata_[step]["X"])[:, -1],
             **kwargs,
         )
 
@@ -313,9 +309,7 @@ class EnvironmentPlot:
         model = self.environment.metadata_[step]["model"]
 
         return pd.Series(
-            model.predict_proba(
-                self.environment.metadata_[step]["X"]
-            )[:, -1]
+            model.predict_proba(self.environment.metadata_[step]["X"])[:, -1]
         ).plot.kde(**kwargs)
 
     def population_size(
