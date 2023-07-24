@@ -18,7 +18,7 @@ if __RECGAME_SETUP__:
     # We are not importing the rest of recourse-game during the build
     # process, as it may not be compiled yet
 else:
-    from . import recourse, environments, utils
+    from . import recourse, environments, data_augmentation, utils
     from ._version import __version__
 
-    __all__ = ["recourse", "environments", "utils", "__version__"]
+    __all__ = ["recourse", "environments", "data_augmentation", "utils", "__version__"]
