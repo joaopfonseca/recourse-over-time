@@ -4,6 +4,7 @@ import argparse
 NUMPY_MIN_VERSION = "1.14.6"
 PANDAS_MIN_VERSION = "1.3.5"
 SKLEARN_MIN_VERSION = "1.0.0"
+IMBLEARN_MIN_VERSION = "0.8.0"
 MLRESEARCH_MIN_VERSION = "0.4.1"
 MATPLOTLIB_MIN_VERSION = "2.2.3"
 
@@ -11,6 +12,7 @@ dependent_packages = {
     "pandas": (PANDAS_MIN_VERSION, "install"),
     "numpy": (NUMPY_MIN_VERSION, "install"),
     "scikit-learn": (SKLEARN_MIN_VERSION, "install"),
+    "imbalanced-learn": (IMBLEARN_MIN_VERSION, "install"),
     "ml-research": (MLRESEARCH_MIN_VERSION, "install"),
     "matplotlib": (MATPLOTLIB_MIN_VERSION, "install"),
     "cplex": ("22.1.0.0", "install"),
