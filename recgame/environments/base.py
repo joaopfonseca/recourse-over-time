@@ -139,6 +139,7 @@ class BaseEnvironment(ABC, BaseEstimator):
             "threshold": self.threshold_,
             "growth_k": self.growth_k_,
             "threshold_index": self.threshold_index_,
+            "model": deepcopy(self.model_)
         }
 
     def _get_moving_agents(self, step):
@@ -149,10 +150,7 @@ class BaseEnvironment(ABC, BaseEstimator):
         adapted = (
             (self.metadata_[step - 1]["effort"] > 0)
             & (~self.metadata_[step - 1]["outcome"].astype(bool))
-            & (
-                self.model_.predict_proba(self.metadata_[step - 1]["X"])[:, 1]
-                < self.metadata_[step - 1]["threshold"]
-            )
+            & (self.metadata_[step - 1]["score"] < self.metadata_[step - 1]["threshold"])
         )
         return adapted[adapted].index.values
 
@@ -260,15 +258,27 @@ class BaseEnvironment(ABC, BaseEstimator):
         if X is None:
             X = self.X_ if step is None else self.metadata_[step]["X"]
 
-        # Ensure threshold is up-to-date
+        # Ensure algorithmic recourse parameters are up-to-date
+        self.recourse.threshold = self.threshold_
+        self.recourse.model = self.model_
+
+        # Ensure model and threshold are up-to-date
         threshold = (
             self.threshold_ if step is None else self.metadata_[step]["threshold"]
         )
+        model = (
+            self.model_ if step is None else self.metadata_[step]["model"]
+        )
+
         if np.isnan(threshold):
             return X
         else:
-            self.recourse.threshold = threshold
-            return self.recourse.counterfactual(X)
+            # Set up recourse with temporarily modified parameters for the cases where
+            # step != None
+            rec = deepcopy(self.recourse)
+            rec.threshold = threshold
+            rec.model = model
+            return rec.counterfactual(X)
 
     def outcome(self, X=None, step=None, return_scores=False):
         """
@@ -287,12 +297,14 @@ class BaseEnvironment(ABC, BaseEstimator):
             else self.threshold_index_
         )
 
+        model = self.metadata_[step]["model"] if step is not None else self.model_
+
         if X is None:
             X = self.metadata_[step]["X"] if step is not None else self.X_
 
         # Output should consider threshold and return a single value per
         # observation
-        probs = self.model_.predict_proba(X)[:, 1]
+        probs = model.predict_proba(X)[:, 1]
 
         pred = np.zeros(probs.shape, dtype=int)
         idx = np.argsort(probs)[threshold_idx:]

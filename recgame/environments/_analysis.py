@@ -9,23 +9,6 @@ class EnvironmentAnalysis:
     def __init__(self, environment):
         self.environment = environment
 
-    def _get_moving_agents(self, step):
-        """Get indices of agents that adapted between ``step-1`` and ``step``."""
-        if step == 0:
-            raise IndexError("Agents cannot move at the initial state (``step=0``).")
-
-        env = self.environment
-
-        adapted = (
-            (env.metadata_[step - 1]["effort"] > 0)
-            & (~env.metadata_[step - 1]["outcome"].astype(bool))
-            & (
-                env.model_.predict_proba(env.metadata_[step - 1]["X"])[:, 1]
-                < env.metadata_[step - 1]["threshold"]
-            )
-        )
-        return adapted[adapted].index.values
-
     def success_rate(self, step, last_step=None):
         """
         For an agent to move, they need to have adaptation > 0, unfavorable outcome and
@@ -47,7 +30,7 @@ class EnvironmentAnalysis:
         success_rates = []
         for step in steps:
             # Indices of agents that moved
-            adapted = self._get_moving_agents(step)
+            adapted = env._get_moving_agents(step)
 
             # Indices of agents above threshold (according to the last state)
             above_threshold = (
@@ -126,7 +109,7 @@ class EnvironmentAnalysis:
         df = pd.concat(entered).to_frame("entered_step")
 
         # n_adaptations
-        moving = [self._get_moving_agents(i) for i in idx.keys() if i != 0]
+        moving = [env._get_moving_agents(i) for i in idx.keys() if i != 0]
         moving = pd.Series(
             Counter([i for submoving in moving for i in submoving]),
             name="n_adaptations",
@@ -165,7 +148,7 @@ class EnvironmentAnalysis:
         for step in idx.keys():
             if step == 0:
                 continue
-            adapted = self._get_moving_agents(step)
+            adapted = env._get_moving_agents(step)
             above_threshold = (
                 env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
             )
@@ -205,7 +188,7 @@ class EnvironmentAnalysis:
                 continue
 
             # Number of agents that moved
-            adapted = self._get_moving_agents(step)
+            adapted = env._get_moving_agents(step)
 
             # Number of agents that moved and crossed the threshold
             above_threshold = (
