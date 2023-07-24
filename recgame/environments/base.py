@@ -139,7 +139,7 @@ class BaseEnvironment(ABC, BaseEstimator):
             "threshold": self.threshold_,
             "growth_k": self.growth_k_,
             "threshold_index": self.threshold_index_,
-            "model": deepcopy(self.model_)
+            "model": deepcopy(self.model_),
         }
 
     def _get_moving_agents(self, step):
@@ -150,7 +150,10 @@ class BaseEnvironment(ABC, BaseEstimator):
         adapted = (
             (self.metadata_[step - 1]["effort"] > 0)
             & (~self.metadata_[step - 1]["outcome"].astype(bool))
-            & (self.metadata_[step - 1]["score"] < self.metadata_[step - 1]["threshold"])
+            & (
+                self.metadata_[step - 1]["score"]
+                < self.metadata_[step - 1]["threshold"]
+            )
         )
         return adapted[adapted].index.values
 
@@ -266,9 +269,7 @@ class BaseEnvironment(ABC, BaseEstimator):
         threshold = (
             self.threshold_ if step is None else self.metadata_[step]["threshold"]
         )
-        model = (
-            self.model_ if step is None else self.metadata_[step]["model"]
-        )
+        model = self.model_ if step is None else self.metadata_[step]["model"]
 
         if np.isnan(threshold):
             return X
@@ -323,7 +324,9 @@ class BaseEnvironment(ABC, BaseEstimator):
         NOTE: Formerly run_simulation
         """
         for _ in range(steps):
+            self.step_ += 1
             self._simulate()
+            self._save_metadata()
         return self
 
     def _simulate(self):
@@ -344,7 +347,10 @@ class BaseEnvironment(ABC, BaseEstimator):
             self.remove_agents()
 
         # Adapt agents
-        counterfactuals = self.counterfactual(X=self.X_)
+        # NOTE:
+        # - Recourse will use the model from the previous time step (they adapt according
+        #   to the recommendations received using the state of the previous time step)
+        counterfactuals = self.counterfactual(X=self.X_, step=self.step_ - 1)
         new_factuals = self.behavior_function_.adaptation(
             factuals=self.X_, counterfactuals=counterfactuals, effort_rate=self.effort_
         )
@@ -366,9 +372,5 @@ class BaseEnvironment(ABC, BaseEstimator):
             X=self.X_, global_adaptation=self.get_global_adaptation()
         )
         self.behavior_function_.environment = self
-
-        # Update metadata and step number
-        self.step_ += 1
-        self._save_metadata()
 
         return self
