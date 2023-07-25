@@ -48,7 +48,7 @@ class EnvironmentPlot:
 
         return self
 
-    def _create_mesh_grid(self, X_curr, mesh_size):
+    def _create_mesh_grid(self, X_curr, mesh_size, step):
         if self.is_large_dim:
             X_ = pd.DataFrame(
                 (
@@ -85,7 +85,7 @@ class EnvironmentPlot:
                 + self._autoencoder.intercepts_[1]
             )
 
-        mesh = self.environment.model_.predict_proba(
+        mesh = self.environment.metadata_[step]["model"].predict_proba(
             pd.DataFrame(mesh, columns=X_curr.columns)
         )[:, -1]
         self.mesh_ = np.reshape(mesh, mesh_size)
@@ -105,9 +105,9 @@ class EnvironmentPlot:
         if step > 0:
             df_prev = self.environment.metadata_[step - 1]["X"]
 
-        outcome = self.environment.predict(step=step).astype(bool)
+        outcome = self.environment.metadata_[step]["outcome"].astype(bool)
 
-        self._create_mesh_grid(df, mesh_size)
+        self._create_mesh_grid(df, mesh_size, step)
 
         # Project data into 2 dimensions
         if self.is_large_dim:
@@ -188,24 +188,60 @@ class EnvironmentPlot:
         return ax
 
     def agent_scores(
-        self, min_step=None, max_step=None, legend=True, title=True, ax=None
+        self,
+        min_step=None,
+        max_step=None,
+        legend=True,
+        title=True,
+        ax=None,
+        ref_model_step=None,
     ):
         """Visualize population scores across multiple time steps."""
         if not hasattr(self, "_autoencoder"):
             self.fit()
 
-        df_list = [
-            (i, metadata["X"], metadata["threshold"])
-            for i, metadata in self.environment.metadata_.items()
-        ][min_step:max_step]
+        metadata_ = self.environment.metadata_
+        min_step = min_step if min_step is not None else 0
+        max_step = max_step if max_step is not None else max(list(metadata_.keys()))
+        steps_list = list(range(min_step, max_step))
+
+        if ref_model_step is None:
+            df_list = [
+                (
+                    i,
+                    metadata_[i]["X"],
+                    metadata_[i]["threshold"],
+                    metadata_[i]["outcome"].astype(bool),
+                    metadata_[i]["score"],
+                )
+                for i in steps_list
+            ]
+        else:
+            df_list = [
+                (
+                    i,
+                    # X
+                    metadata_[i]["X"],
+                    # Threshold
+                    metadata_[ref_model_step]["model"]
+                    .predict_proba(metadata_[i]["X"])[:, 1][
+                        metadata_[i]["outcome"].astype(bool)
+                    ]
+                    .min(),
+                    # Outcome
+                    metadata_[i]["outcome"].astype(bool),
+                    # Score
+                    metadata_[ref_model_step]["model"].predict_proba(metadata_[i]["X"])[
+                        :, 1
+                    ],
+                )
+                for i in steps_list
+            ]
 
         if ax is None:
             _, ax = plt.subplots(1, 1, figsize=(10, 10))
 
-        for step, df, threshold in df_list:
-            prob = self.environment.model_.predict_proba(df)[:, -1]
-            outcome = self.environment.predict(step=step).astype(bool)
-
+        for step, df, threshold, outcome, prob in df_list:
             # Set up x coordinates to form swarm plots
             x = np.ones(df.shape[0], dtype=int) * step
             x = x + swarm(prob)
@@ -254,10 +290,10 @@ class EnvironmentPlot:
         if step is None:
             step = self.environment.step_
 
+        model = self.environment.metadata_[step]["model"]
+
         return plt.hist(
-            self.environment.model_.predict_proba(
-                self.environment.metadata_[step]["X"]
-            )[:, -1],
+            model.predict_proba(self.environment.metadata_[step]["X"])[:, -1],
             **kwargs,
         )
 
@@ -270,10 +306,10 @@ class EnvironmentPlot:
         if step is None:
             step = self.environment.step_
 
+        model = self.environment.metadata_[step]["model"]
+
         return pd.Series(
-            self.environment.model_.predict_proba(
-                self.environment.metadata_[step]["X"]
-            )[:, -1]
+            model.predict_proba(self.environment.metadata_[step]["X"])[:, -1]
         ).plot.kde(**kwargs)
 
     def population_size(

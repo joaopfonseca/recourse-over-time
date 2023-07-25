@@ -1192,9 +1192,9 @@ def texify_action_set(action_set):
     """
     assert isinstance(action_set, ActionSet)
 
-    tex_binary_str = "$\{0,1\}$"
-    tex_integer_str = "$\mathbb{Z}$"
-    tex_real_str = "$\mathbb{R}$"
+    tex_binary_str = r"${0,1}$"
+    tex_integer_str = r"$\mathbb{Z}$"
+    tex_real_str = r"$\mathbb{R}$"
 
     df = action_set.df
     df = df.drop(["compatible", "flip_direction"], axis=1)
@@ -1225,7 +1225,7 @@ def texify_action_set(action_set):
     df = df.rename(
         columns={
             "name": "Name",
-            "grid_size": "\# Actions",
+            "grid_size": r"# Actions",
             "variable_type": "Type",
             "actionability": "Actionability",
             "lb": "LB",

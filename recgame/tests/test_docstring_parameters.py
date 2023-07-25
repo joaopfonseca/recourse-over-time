@@ -55,13 +55,13 @@ def is_recourse(estimator):
     return False
 
 
-def _generate_data(self, n_agents):
+def _generate_data(n_agents):
     X, y = make_classification(
         n_samples=n_agents,
         n_features=3,
         n_redundant=0,
         n_classes=2,
-        random_state=self._rng.integers(10000),
+        # random_state=self._rng.integers(10000),
     )
     return numpy_to_pandas(X)
 
@@ -214,13 +214,11 @@ def test_fit_docstring_attributes(name, Estimator):
     if is_environment(Estimator):
         clf = LogisticRegression(random_state=2).fit(X, y)
 
-        # monkey patch add_agents since the generative process is different from the
-        # default function
-        Estimator.add_agents = _generate_data
-
         est = Estimator(
             X=X,
             recourse=NFeatureRecourse(model=clf),
+            data_source_func=_generate_data,
+            threshold=5,
             random_state=2,
         )
     elif is_recourse(Estimator):
@@ -233,7 +231,7 @@ def test_fit_docstring_attributes(name, Estimator):
         est.set_params(oob_score=True)
 
     if is_environment(est):
-        est.update()
+        est.simulate()
     elif is_recourse(est):
         est.counterfactual(X)
 

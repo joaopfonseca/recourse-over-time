@@ -1,13 +1,3 @@
-from .environments import (
-    BankLoanApplication1,
-    BankLoanApplication2,
-    BankLoanApplication3,
-    WillingnessEnvironment,
-)
+from .base import BaseEnvironment
 
-__all__ = [
-    "BankLoanApplication1",
-    "BankLoanApplication2",
-    "BankLoanApplication3",
-    "WillingnessEnvironment",
-]
+__all__ = ["BaseEnvironment"]
