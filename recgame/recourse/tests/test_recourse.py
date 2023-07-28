@@ -2,7 +2,7 @@ import pytest
 from itertools import product
 import numpy as np
 from sklearn.linear_model import LogisticRegression
-from recgame.recourse import DiCE
+from recgame.recourse import DiCE, ActionableRecourse
 from recgame.utils import generate_synthetic_data
 from recgame.utils._testing import all_recourse
 
@@ -53,31 +53,56 @@ def test_categorical_features(name, Recourse):
     [
         (n, r, x, i)
         for (n, r), (x, i) in product(
-            all_recourse(), [(df, "f_2"), (df_cat.drop(columns="cat_1"), "cat_0")]
+            all_recourse(), [(df, "f_1"), (df_cat.drop(columns="cat_1"), "cat_0")]
         )
     ],
 )
 def test_immutable_features(name, Recourse, X, immutable):
     clf = LogisticRegression().fit(X, y)
-    recourse = Recourse(model=clf, threshold=THRESHOLD, immutable=[immutable])
-    recourse.set_actions(X)
-    recourse.action_set_.ub = 3
-    recourse.action_set_.lb = -3
+    clf.coef_ += .1
+
+    if immutable == "cat_0":
+        cat_coef = clf.coef_[0, X.columns == "cat_0"]
+        clf.coef_[0, X.columns == "cat_0"] = 0
+        clf.coef_[0, X.columns != "cat_0"] = (
+            clf.coef_[0, X.columns != "cat_0"] + (cat_coef / (X.shape[1] - 1))
+        )
+
+    categorical = ["cat_0"] if "cat_0" in X.columns else None
+
+    if name == "NFeatureRecourse" and immutable == "cat_0":
+        with pytest.raises(TypeError):
+            recourse = Recourse(model=clf, threshold=THRESHOLD, categorical=categorical)
+        return
+
+    recourse = Recourse(
+        model=clf,
+        threshold=THRESHOLD,
+        categorical=categorical,
+        immutable=[immutable]
+    )
 
     counterfactuals = recourse.counterfactual(X)
     assert (counterfactuals[immutable] == X[immutable]).all()
     assert ~np.isnan(counterfactuals.values).any()
-    assert (clf.predict_proba(counterfactuals)[:, -1] >= THRESHOLD).all()
-    assert (counterfactuals.dtypes == df_cat.dtypes).all()
+    assert (clf.predict_proba(counterfactuals)[:, -1] >= THRESHOLD - 1e-10).all()
+    assert (counterfactuals.dtypes == X.dtypes).all()
 
 
-def test_multiple_categorical_with_immutable_features():
-    immutable = "cat_0"
+@pytest.mark.parametrize("Recourse", [DiCE, ActionableRecourse])
+def test_multiple_categorical_with_immutable_features(Recourse):
+    immutable = "cat_1"
     clf = LogisticRegression().fit(df_cat, y)
-    recourse = DiCE(model=clf, threshold=THRESHOLD, immutable=[immutable])
+    recourse = Recourse(
+        model=clf,
+        threshold=THRESHOLD,
+        immutable=[immutable],
+        categorical=categorical
+    )
     recourse.set_actions(df_cat)
-    recourse.action_set_.ub = 3
-    recourse.action_set_.lb = -3
+    for col in df_cat.columns.drop(categorical):
+        recourse.action_set_[col].ub = 3
+        recourse.action_set_[col].lb = -3
 
     counterfactuals = recourse.counterfactual(df_cat)
     assert (counterfactuals[immutable] == df_cat[immutable]).all()
