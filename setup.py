@@ -19,7 +19,7 @@ builtins.__RECGAME_SETUP__ = True
 
 def get_long_description() -> str:
     CURRENT_DIR = Path(__file__).parent
-    return (CURRENT_DIR / "README.md").read_text(encoding="utf8")
+    return (CURRENT_DIR / "README.rst").read_text(encoding="utf8")
 
 
 import recgame._min_dependencies as min_deps
