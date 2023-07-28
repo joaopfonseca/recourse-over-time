@@ -70,6 +70,7 @@ class DiCE(BaseRecourse):
             classifier=self.model, threshold=self.threshold, y_desired=self.y_desired
         )
         X = X.copy()
+        dtypes = X.dtypes
 
         if not hasattr(self, "action_set_"):
             self.set_actions(X=X, action_set=action_set)
@@ -81,7 +82,10 @@ class DiCE(BaseRecourse):
         )
 
         immutable = self.immutable if self.immutable is not None else []
-        categorical = self.categorical if self.immutable is not None else []
+        categorical = self.categorical if self.categorical is not None else []
+
+        # Set categorical features to type string since dice_ml
+        X[categorical] = X[categorical].astype(str)
 
         # Set up basic elements from dice_ml
         d = dice_ml.Data(
@@ -117,8 +121,8 @@ class DiCE(BaseRecourse):
             X_,
             total_CFs=self.set_size,
             desired_class=self.y_desired,
-            # features_to_vary=X.columns.drop(immutable).tolist(),
-            # permitted_range=permitted_range,
+            features_to_vary=X.columns.drop(immutable).tolist(),
+            permitted_range=permitted_range,
             random_seed=self.random_state,
         )
 
@@ -132,5 +136,6 @@ class DiCE(BaseRecourse):
             ]
         )
         X.iloc[mask, :] = counterfactuals
+        X[categorical] = X[categorical].astype(float).round()
 
-        return X
+        return X.astype(dtypes)

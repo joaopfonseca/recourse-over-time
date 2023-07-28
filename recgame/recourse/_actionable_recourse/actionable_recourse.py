@@ -75,7 +75,7 @@ class ActionableRecourse(BaseRecourse):
         actions = fs_pop.actions
 
         for action in actions:
-            candidate_cf = agent + action
+            candidate_cf = agent.astype(float) + action.astype(float)
 
             # Check if candidate counterfactual really flips the prediction of
             # ML model

@@ -60,6 +60,12 @@ class BinaryConstant(BaseBehavior):
             action_set.lb,
             action_set.ub,
         )
+
+        # Get categorical features to match their original data type
+        categorical = self.environment.recourse.categorical
+        categorical = categorical if categorical is not None else []
+        new_factuals[categorical] = new_factuals[categorical].round().astype(int)
+
         return new_factuals
 
     def effort(self, X, global_adaptation):
@@ -99,6 +105,12 @@ class ContinuousFlexible(BaseBehavior):
             action_set.lb,
             action_set.ub,
         )
+
+        # Get categorical features to match their original data type
+        categorical = self.environment.recourse.categorical
+        categorical = categorical if categorical is not None else []
+        new_factuals[categorical] = new_factuals[categorical].round().astype(int)
+
         return new_factuals
 
     def _counterfactual_continuous_vectors(

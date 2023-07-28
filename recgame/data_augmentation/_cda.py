@@ -51,15 +51,19 @@ class CDA(BaseOverSampler):
 
         self._validate_random_state()._validate_recourse(X, y)
 
+        categorical = (
+            self.recourse_.categorical if self.recourse_.categorical is not None else []
+        )
         if hasattr(self.recourse_.model, "feature_names_in_"):
             column_names = self.recourse_.model.feature_names_in_
         else:
             column_names = list(range(X.shape[1]))
 
         X_neg = X[y != self.recourse_.y_desired]
-        X_cf = self.recourse_.counterfactual(
-            pd.DataFrame(X_neg, columns=column_names)
-        ).values
+        X_neg = pd.DataFrame(X_neg.astype(float), columns=column_names)
+        X_neg[categorical] = X_neg[categorical].astype(int).astype(str)
+
+        X_cf = self.recourse_.counterfactual(X_neg).values
 
         # Sample from X_cf to ensure the IR requirement is met
         n_samples = self._get_n_samples(y)
@@ -72,7 +76,7 @@ class CDA(BaseOverSampler):
 
         y_cf = np.ones(X_cf.shape[0]) * self.recourse_.y_desired
 
-        X_resampled = np.concatenate([X, X_cf])
+        X_resampled = np.concatenate([X, X_cf.astype(float)])
         y_resampled = np.concatenate([y, y_cf])
 
         return X_resampled, y_resampled

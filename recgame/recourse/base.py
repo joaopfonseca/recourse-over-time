@@ -54,7 +54,7 @@ class BaseRecourse(ABC, BaseEstimator):
 
         counterfactual_examples = X.apply(
             lambda agent: self._counterfactual(agent, self.action_set_), axis=1
-        )
+        ).astype(X.dtypes)
 
         return counterfactual_examples
 
@@ -63,10 +63,14 @@ class BaseRecourse(ABC, BaseEstimator):
         To be configured with the ActionSet object from the
         ``actionable-recourse`` library.
         """
+        X = X.copy()
 
         categorical = [] if self.categorical is None else self.categorical
         immutable = [] if self.immutable is None else self.immutable
         step = {} if self.step_direction is None else self.step_direction
+
+        cols_float = X.columns.drop([*categorical, *immutable])
+        X[cols_float] = X[cols_float].astype(float)
 
         if action_set is None:
             action_set = ActionSet(X=X, y_desired=self.y_desired, default_bounds=(0, 1))

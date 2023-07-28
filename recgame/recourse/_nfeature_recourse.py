@@ -25,6 +25,13 @@ class NFeatureRecourse(BaseRecourse):
             step_direction=step_direction,
             y_desired=y_desired,
         )
+
+        if categorical is not None and categorical != []:
+            raise TypeError(
+                "NFeatureRecourse does not work with categorical features. Consider "
+                "using a different recourse method."
+            )
+
         self.n_features = n_features
 
     def _counterfactual(self, agent, action_set):

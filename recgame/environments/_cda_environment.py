@@ -25,16 +25,14 @@ class CDAEnvironment(BaseEnvironment):
     al.
     """
 
-    def _check(self):
-        if not hasattr(self, "model_"):
-            self.model_ = deepcopy(self.recourse.model)
+    # def _check(self):
+    #     if not hasattr(self, "model_"):
+    #         self.model_ = deepcopy(self.recourse.model)
 
-        super()._check()
+    #     super()._check()
 
     def _simulate(self):
         # Augment the training dataset
-        self.X_, self.outcome_
-
         data_augm = CDA(
             recourse=deepcopy(self.recourse), ir=1, random_state=self.random_state
         )

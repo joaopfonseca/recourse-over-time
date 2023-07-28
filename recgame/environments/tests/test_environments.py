@@ -1,12 +1,13 @@
 import pytest
 from itertools import product
+from copy import deepcopy
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from recgame.environments import BaseEnvironment
 from recgame.utils import generate_synthetic_data
 from recgame.utils._testing import all_environments
-from recgame.recourse import NFeatureRecourse
+from recgame.recourse import NFeatureRecourse, DiCE, ActionableRecourse
 from recgame.environments._behavior_functions import BEHAVIOR_FUNCTIONS
 
 RANDOM_SEED = 42
@@ -18,18 +19,19 @@ ENV_KWARGS = {
     "growth_rate": 0.2,
     "growth_rate_type": "relative",
 }
+rng = np.random.default_rng(RANDOM_SEED)
 
 
 def data_source_func(n_agents):
     return generate_synthetic_data(
-        n_agents=n_agents, n_continuous=3, n_categorical=0  # , random_state=RANDOM_SEED
+        n_agents=n_agents, n_continuous=3, n_categorical=0, random_state=rng
     )[0]
 
 
 def data_source_func_cat(n_agents):
-    df = pd.DataFrame(np.random.random((n_agents, 3)), columns=["a", "b", "c", "d"])
-    df["cat_1"] = np.random.integers(0, 2, n_agents)
-    df["cat_2"] = np.random.integers(0, 2, n_agents)
+    df = pd.DataFrame(rng.random((n_agents, 3)), columns=["f_0", "f_1", "f_2"])
+    df["cat_0"] = rng.integers(0, 2, n_agents).astype(int)
+    df["cat_1"] = rng.integers(0, 2, n_agents).astype(int)
     return df
 
 
@@ -37,7 +39,7 @@ df, y, _ = generate_synthetic_data(
     n_agents=100, n_continuous=3, n_categorical=0, random_state=RANDOM_SEED
 )
 
-df2, _, _ = generate_synthetic_data(
+df2, _, categorical = generate_synthetic_data(
     n_agents=100, n_continuous=3, n_categorical=2, random_state=RANDOM_SEED
 )
 
@@ -49,9 +51,6 @@ def test_environments(name, Environment):
     """
     model = LogisticRegression(random_state=RANDOM_SEED).fit(df, y)
     rec = NFeatureRecourse(model=model)
-
-    if name != "BaseEnvironment":
-        raise TypeError("Environment paramenters undefined.")
 
     env = Environment(
         X=df,
@@ -66,9 +65,26 @@ def test_environments(name, Environment):
 
     assert env.X_.shape[0] == 100
     assert env.step_ == 6
-    assert (
-        np.array([meta["threshold"] for meta in env.metadata_.values()]) >= 0.5
-    ).all()
+
+    # Environments with model retraining cannot ensure the threshold will remain over 0.5
+    # because of model drift.
+    if name not in ["ModelRetrainEnvironment", "CDAEnvironment"]:
+        exp_thresholds = np.array(
+            [
+                env.metadata_[0]["model"]
+                .predict_proba(env.metadata_[i]["X"])[:, 1][
+                    env.metadata_[i]["outcome"].astype(bool)
+                ]
+                .min()
+                for i in env.metadata_.keys()
+            ]
+        )
+        assert (exp_thresholds >= 0.5).all()
+        assert (
+            np.array([meta["threshold"] for meta in env.metadata_.values()])
+            == exp_thresholds
+        ).all()
+
     assert (env.X_.dtypes == env.X.dtypes).all()
 
 
@@ -103,21 +119,31 @@ def test_absolute_params(threshold, growth_rate, behavior_function):
 #     """Test if remove winners parameter is working as intended."""
 
 
-@pytest.mark.parametrize("name, Environment", all_environments())
-def test_data_types(name, Environment):
-    model = LogisticRegression(random_state=RANDOM_SEED).fit(df, y)
-    rec = NFeatureRecourse(model=model, categorical=["cat_1", "cat_2"])
-
-    if name != "BaseEnvironment":
-        raise TypeError("Environment paramenters undefined.")
+@pytest.mark.parametrize(
+    "name, Environment, Recourse, behavior_function",
+    [
+        (n, e, r, b)
+        for (n, e), r, b in product(
+            all_environments(), [DiCE, ActionableRecourse], BEHAVIOR_FUNCTIONS
+        )
+    ],
+)
+def test_data_types(name, Environment, Recourse, behavior_function):
+    X = df2.iloc[:20]
+    model = LogisticRegression(random_state=RANDOM_SEED).fit(X, y[:20])
+    rec = Recourse(model=model, categorical=categorical)
+    env_params = deepcopy(ENV_KWARGS)
+    env_params.pop("behavior_function")
 
     env = Environment(
-        X=df2,
+        X=X,
         recourse=rec,
-        data_source_func=data_source_func,
+        data_source_func=data_source_func_cat,
         random_state=RANDOM_SEED,
-        **ENV_KWARGS
+        behavior_function=behavior_function,
+        **env_params
     )
 
     env.simulate()
+    assert (env.X.dtypes == X.dtypes).all()
     assert (env.X_.dtypes == env.X.dtypes).all()
