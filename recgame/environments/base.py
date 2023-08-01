@@ -147,6 +147,10 @@ class BaseEnvironment(ABC, BaseEstimator):
         if step == 0:
             raise IndexError("Agents cannot move at the initial state (``step=0``).")
 
+        # score = self.metadata_[step - 1]["model"].predict_proba(
+        #     env.metadata_[step]["X"]
+        # )[:, 1]
+
         adapted = (
             (self.metadata_[step - 1]["effort"] > 0)
             & (~self.metadata_[step - 1]["outcome"].astype(bool))
@@ -240,6 +244,16 @@ class BaseEnvironment(ABC, BaseEstimator):
         )
 
         return threshold_
+
+    def get_all_agents(self, keep="last"):
+        """
+        Retrieve a pandas dataframe with all agents that ever entered the environment.
+        """
+        agents = pd.concat(
+            [self.metadata_[step]["X"] for step in self.metadata_.keys()]
+        )
+        agents = agents[~agents.index.duplicated(keep=keep)].sort_index()
+        return agents
 
     def remove_agents(self, mask=None):
         """

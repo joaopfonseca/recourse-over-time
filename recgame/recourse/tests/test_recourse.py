@@ -59,13 +59,13 @@ def test_categorical_features(name, Recourse):
 )
 def test_immutable_features(name, Recourse, X, immutable):
     clf = LogisticRegression().fit(X, y)
-    clf.coef_ += .1
+    clf.coef_ += 0.1
 
     if immutable == "cat_0":
         cat_coef = clf.coef_[0, X.columns == "cat_0"]
         clf.coef_[0, X.columns == "cat_0"] = 0
-        clf.coef_[0, X.columns != "cat_0"] = (
-            clf.coef_[0, X.columns != "cat_0"] + (cat_coef / (X.shape[1] - 1))
+        clf.coef_[0, X.columns != "cat_0"] = clf.coef_[0, X.columns != "cat_0"] + (
+            cat_coef / (X.shape[1] - 1)
         )
 
     categorical = ["cat_0"] if "cat_0" in X.columns else None
@@ -76,10 +76,7 @@ def test_immutable_features(name, Recourse, X, immutable):
         return
 
     recourse = Recourse(
-        model=clf,
-        threshold=THRESHOLD,
-        categorical=categorical,
-        immutable=[immutable]
+        model=clf, threshold=THRESHOLD, categorical=categorical, immutable=[immutable]
     )
 
     counterfactuals = recourse.counterfactual(X)
@@ -94,10 +91,7 @@ def test_multiple_categorical_with_immutable_features(Recourse):
     immutable = "cat_1"
     clf = LogisticRegression().fit(df_cat, y)
     recourse = Recourse(
-        model=clf,
-        threshold=THRESHOLD,
-        immutable=[immutable],
-        categorical=categorical
+        model=clf, threshold=THRESHOLD, immutable=[immutable], categorical=categorical
     )
     recourse.set_actions(df_cat)
     for col in df_cat.columns.drop(categorical):

@@ -9,32 +9,47 @@ class EnvironmentAnalysis:
     def __init__(self, environment):
         self.environment = environment
 
-    def success_rate(self, step, last_step=None):
+    def success_rate(self, steps=None, last_step=None, filter_feature=None):
         """
         For an agent to move, they need to have adaptation > 0, unfavorable outcome and
         score < threshold.
 
         If nan, no agents adapted (thus no rate is calculated).
-
-        NOTE: DEPRECATED; REMOVE SOON.
         """
-        if step == 0:
+        env = self.environment
+
+        if steps is not None and 0 in steps:
             raise IndexError(
                 "Cannot calculate success rate at ``step=0`` (agents have not adapted "
                 "yet)."
             )
+        elif steps is None:
+            steps = range(1, env.step_ + 1)
 
-        env = self.environment
+        if filter_feature is not None:
+            filter_ = env.get_all_agents().groupby(filter_feature)
+            filter_ = {val: agents.index.to_numpy() for val, agents in filter_}
 
-        steps = [step] if last_step is None else [s for s in range(step, last_step)]
+        # Temporary function to avoid duplicating the expression in the for loop
+        def _get_recourse_reliability(success, candidates):
+            return (
+                success.shape[0] / candidates.shape[0]
+                if candidates.shape[0] > 0
+                else np.nan
+            )
+
         success_rates = []
         for step in steps:
             # Indices of agents that moved
             adapted = env._get_moving_agents(step)
 
             # Indices of agents above threshold (according to the last state)
-            above_threshold = (
-                env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
+            above_threshold = pd.Series(
+                env.metadata_[step - 1]["model"].predict_proba(
+                    env.metadata_[step]["X"]
+                )[:, 1]
+                >= env.metadata_[step - 1]["threshold"],
+                index=env.metadata_[step]["X"].index,
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
 
@@ -47,14 +62,29 @@ class EnvironmentAnalysis:
 
             # Indices of agents that moved and have a favorable outcome
             success = np.intersect1d(favorable_outcomes, candidates)
-            success_rate = (
-                success.shape[0] / candidates.shape[0]
-                if candidates.shape[0] > 0
-                else np.nan
-            )
+
+            # Get recourse reliability metric
+            if filter_feature is None:
+                success_rate = _get_recourse_reliability(success, candidates)
+            else:
+                success_groups = [
+                    np.intersect1d(success, idx) for idx in filter_.values()
+                ]
+                candidates_groups = [
+                    np.intersect1d(candidates, idx) for idx in filter_.values()
+                ]
+                success_rate = [
+                    _get_recourse_reliability(suc, can)
+                    for suc, can in zip(success_groups, candidates_groups)
+                ]
 
             success_rates.append(success_rate)
-        return np.array(success_rates)
+
+        if filter_feature is not None:
+            columns = filter_.keys()
+            return pd.DataFrame(success_rates, columns=columns, index=steps)
+        else:
+            return np.array(success_rates)
 
     def threshold_drift(self, step=None, last_step=None):
         """
@@ -149,8 +179,12 @@ class EnvironmentAnalysis:
             if step == 0:
                 continue
             adapted = env._get_moving_agents(step)
-            above_threshold = (
-                env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
+            above_threshold = pd.Series(
+                env.metadata_[step - 1]["model"].predict_proba(
+                    env.metadata_[step]["X"]
+                )[:, 1]
+                >= env.metadata_[step - 1]["threshold"],
+                index=env.metadata_[step]["X"].index,
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
             candidates = np.intersect1d(adapted, above_threshold)
@@ -191,8 +225,12 @@ class EnvironmentAnalysis:
             adapted = env._get_moving_agents(step)
 
             # Number of agents that moved and crossed the threshold
-            above_threshold = (
-                env.metadata_[step]["score"] >= env.metadata_[step - 1]["threshold"]
+            above_threshold = pd.Series(
+                env.metadata_[step - 1]["model"].predict_proba(
+                    env.metadata_[step]["X"]
+                )[:, 1]
+                >= env.metadata_[step - 1]["threshold"],
+                index=env.metadata_[step]["X"].index,
             )
             above_threshold = above_threshold[above_threshold].index.to_numpy()
             candidates = np.intersect1d(adapted, above_threshold)

@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.neural_network import MLPRegressor
+from matplotlib.colors import ListedColormap
+from mlresearch.utils import feature_to_color
 
 from .swarmplot import swarm
 
@@ -11,9 +13,9 @@ class EnvironmentPlot:
     TODO: Add documentation.
     """
 
-    _favorable = "green"
-    _unfavorable = "blue"
-    _previous = "red"
+    _favorable = ListedColormap(["green"])
+    _unfavorable = ListedColormap(["blue"])
+    _previous = ListedColormap(["red"])
 
     def __init__(self, environment, random_state=None):
         self.environment = environment
@@ -91,8 +93,42 @@ class EnvironmentPlot:
         self.mesh_ = np.reshape(mesh, mesh_size)
         return self
 
+    def _get_cmaps(
+        self, df, color_feature, cmap_favorable, cmap_unfavorable, cmap_previous
+    ):
+        colfeat = (
+            df[color_feature].values
+            if color_feature is not None
+            else np.ones(df.shape[0])
+        )
+        cmap_favorable = self._favorable if cmap_favorable is None else cmap_favorable
+        cmap_unfavorable = (
+            self._unfavorable if cmap_unfavorable is None else cmap_unfavorable
+        )
+        cmap_previous = self._previous if cmap_previous is None else cmap_previous
+
+        favorable = pd.Series(
+            feature_to_color(colfeat, cmap=self._favorable), index=df.index
+        )
+        unfavorable = pd.Series(
+            feature_to_color(colfeat, cmap=self._unfavorable), index=df.index
+        )
+        previous = pd.Series(
+            feature_to_color(colfeat, cmap=self._previous), index=df.index
+        )
+        return favorable, unfavorable, previous
+
     def scatter(
-        self, step=None, mesh_size=(100, 100), legend=True, title=True, ax=None
+        self,
+        step=None,
+        mesh_size=(100, 100),
+        legend=True,
+        title=True,
+        ax=None,
+        color_feature=None,
+        cmap_favorable=None,
+        cmap_unfavorable=None,
+        cmap_previous=None,
     ):
         """Visualize the population in a 2d-scatter plot."""
         if not hasattr(self, "_autoencoder"):
@@ -108,6 +144,11 @@ class EnvironmentPlot:
         outcome = self.environment.metadata_[step]["outcome"].astype(bool)
 
         self._create_mesh_grid(df, mesh_size, step)
+
+        # Get colors according to color_feature
+        favorable, unfavorable, previous = self._get_cmaps(
+            df, color_feature, cmap_favorable, cmap_unfavorable, cmap_previous
+        )
 
         # Project data into 2 dimensions
         if self.is_large_dim:
@@ -158,7 +199,7 @@ class EnvironmentPlot:
                 x=df_prev.loc[move].iloc[:, 0],
                 y=df_prev.loc[move].iloc[:, 1],
                 alpha=0.3,
-                color=self._previous,
+                color=previous.loc[move],
                 label="Prev. position" if legend else None,
             )
 
@@ -166,7 +207,7 @@ class EnvironmentPlot:
         ax.scatter(
             x=df.iloc[~outcome.values, 0],
             y=df.iloc[~outcome.values, 1],
-            color=self._unfavorable,
+            color=unfavorable.iloc[~outcome.values],
             alpha=0.5,
             label="Unfavorable" if legend else None,
         )
@@ -175,7 +216,7 @@ class EnvironmentPlot:
         ax.scatter(
             x=df.iloc[outcome.values, 0],
             y=df.iloc[outcome.values, 1],
-            color=self._favorable,
+            color=favorable.iloc[outcome.values],
             alpha=0.5,
             label="Favorable" if legend else None,
         )
@@ -195,6 +236,10 @@ class EnvironmentPlot:
         title=True,
         ax=None,
         ref_model_step=None,
+        color_feature=None,
+        cmap_favorable=None,
+        cmap_unfavorable=None,
+        cmap_previous=None,
     ):
         """Visualize population scores across multiple time steps."""
         if not hasattr(self, "_autoencoder"):
@@ -202,7 +247,7 @@ class EnvironmentPlot:
 
         metadata_ = self.environment.metadata_
         min_step = min_step if min_step is not None else 0
-        max_step = max_step if max_step is not None else max(list(metadata_.keys()))
+        max_step = max_step if max_step is not None else len(metadata_.keys())
         steps_list = list(range(min_step, max_step))
 
         if ref_model_step is None:
@@ -242,6 +287,11 @@ class EnvironmentPlot:
             _, ax = plt.subplots(1, 1, figsize=(10, 10))
 
         for step, df, threshold, outcome, prob in df_list:
+            # Get colors according to color_feature
+            favorable, unfavorable, previous = self._get_cmaps(
+                df, color_feature, cmap_favorable, cmap_unfavorable, cmap_previous
+            )
+
             # Set up x coordinates to form swarm plots
             x = np.ones(df.shape[0], dtype=int) * step
             x = x + swarm(prob)
@@ -251,14 +301,14 @@ class EnvironmentPlot:
             ax.scatter(
                 x=x[~outcome.values],
                 y=prob[~outcome.values],
-                color=self._unfavorable,
+                color=unfavorable[~outcome.values],
                 alpha=0.5,
                 label=("Unfavorable" if add_labels else None),
             )
             ax.scatter(
                 x=x[outcome.values],
                 y=prob[outcome.values],
-                color=self._favorable,
+                color=favorable[outcome.values],
                 alpha=0.5,
                 label=("Favorable" if add_labels else None),
             )
@@ -266,7 +316,7 @@ class EnvironmentPlot:
         ax.plot(
             [meta[0] for meta in df_list],
             [meta[2] for meta in df_list],
-            color=self._previous,
+            color="red",
             label="Threshold",
             alpha=0.3,
         )
@@ -281,7 +331,7 @@ class EnvironmentPlot:
 
         return ax
 
-    def scores_histogram(self, step=None, **kwargs):
+    def scores_histogram(self, step=None, color_feature=None, **kwargs):
         """
         Plots the histogram of the scores at ``step``.
 
