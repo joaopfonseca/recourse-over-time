@@ -9,7 +9,9 @@ class EnvironmentAnalysis:
     def __init__(self, environment):
         self.environment = environment
 
-    def success_rate(self, steps=None, last_step=None, filter_feature=None):
+    def success_rate(
+        self, steps=None, last_step=None, filter_feature=None, filter_idx=None
+    ):
         """
         For an agent to move, they need to have adaptation > 0, unfavorable outcome and
         score < threshold.
@@ -29,6 +31,9 @@ class EnvironmentAnalysis:
         if filter_feature is not None:
             filter_ = env.get_all_agents().groupby(filter_feature)
             filter_ = {val: agents.index.to_numpy() for val, agents in filter_}
+        elif filter_idx is not None:
+            filter_feature = True
+            filter_ = filter_idx
 
         # Temporary function to avoid duplicating the expression in the for loop
         def _get_recourse_reliability(success, candidates):
