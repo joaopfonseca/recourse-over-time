@@ -32,14 +32,20 @@ class CDAEnvironment(BaseEnvironment):
     #     super()._check()
 
     def _simulate(self):
+        # Simulation runs as is
+        super()._simulate()
+
         # Augment the training dataset
-        data_augm = CDA(
-            recourse=deepcopy(self.recourse), ir=1, random_state=self.random_state
-        )
+        cda_rec = deepcopy(self.recourse)
+        cda_rec.threshold = self.threshold_
+        cda_rec.model = deepcopy(self.model_)
+        data_augm = CDA(recourse=cda_rec, ir=1, random_state=self.random_state)
         X_aug, y_aug = data_augm.fit_resample(self.X_, self.outcome_)
 
         # Model is updated using the new data
         self.model_ = clone(self.model_).fit(X_aug, y_aug)
 
-        # The rest of the simulation runs as is
-        return super()._simulate()
+        # Overwrite threshold
+        self.threshold_ = self.get_score_threshold()
+
+        return self
