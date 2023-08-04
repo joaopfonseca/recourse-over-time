@@ -189,12 +189,18 @@ class ContinuousConstant(ContinuousFlexible):
         # Fetch environment variables
         rng = self.environment._rng
 
-        current_effort = self.effort_ if hasattr(self, "effort_") else None
+        current_effort = (
+            self.environment.effort_ if hasattr(self.environment, "effort_") else None
+        )
 
-        df_new = self.environment._new_agents if hasattr(self, "_new_agents") else X
+        df_new = (
+            self.environment._new_agents
+            if hasattr(self.environment, "_new_agents")
+            else X
+        )
 
         x = rng.random(df_new.shape[0])
-        effort_rate = x * global_adaptation / 10
+        effort_rate = x * global_adaptation / 20
         effort_rate = pd.Series(effort_rate, index=df_new.index)
         effort_rate = pd.concat([current_effort, effort_rate])
 
