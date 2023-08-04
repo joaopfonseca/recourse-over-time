@@ -54,10 +54,8 @@ class CDA(BaseOverSampler):
         categorical = (
             self.recourse_.categorical if self.recourse_.categorical is not None else []
         )
-        if hasattr(self.recourse_.model, "feature_names_in_"):
-            column_names = self.recourse_.model.feature_names_in_
-        else:
-            column_names = list(range(X.shape[1]))
+
+        column_names = self.get_feature_names_out()
 
         X_neg = X[y != self.recourse_.y_desired]
         X_neg = pd.DataFrame(X_neg.astype(float), columns=column_names)
