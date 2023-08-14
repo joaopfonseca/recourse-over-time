@@ -52,7 +52,7 @@ class EnvironmentAnalysis:
             above_threshold = pd.Series(
                 env.metadata_[step - 1]["model"].predict_proba(
                     env.metadata_[step]["X"]
-                )[:, 1]
+                )[:, -1]
                 >= env.metadata_[step - 1]["threshold"],
                 index=env.metadata_[step]["X"].index,
             )
@@ -187,7 +187,7 @@ class EnvironmentAnalysis:
             above_threshold = pd.Series(
                 env.metadata_[step - 1]["model"].predict_proba(
                     env.metadata_[step]["X"]
-                )[:, 1]
+                )[:, -1]
                 >= env.metadata_[step - 1]["threshold"],
                 index=env.metadata_[step]["X"].index,
             )
@@ -233,7 +233,7 @@ class EnvironmentAnalysis:
             above_threshold = pd.Series(
                 env.metadata_[step - 1]["model"].predict_proba(
                     env.metadata_[step]["X"]
-                )[:, 1]
+                )[:, -1]
                 >= env.metadata_[step - 1]["threshold"],
                 index=env.metadata_[step]["X"].index,
             )

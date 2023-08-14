@@ -236,7 +236,8 @@ class BaseEnvironment(ABC, BaseEstimator):
         if self.threshold_index_ < 0:
             self.threshold_index_ = self.X_.shape[0] - 1
 
-        probabilities = self.model_.predict_proba(self.X_)[:, 1]
+        # probabilities = self.model_.predict_proba(self.X_)[:, 1]
+        probabilities = self.outcome(self.X_, return_scores=True)[-1].values
         threshold_ = (
             probabilities[np.argsort(probabilities)][self.threshold_index_]
             if threshold != 0
@@ -319,7 +320,7 @@ class BaseEnvironment(ABC, BaseEstimator):
 
         # Output should consider threshold and return a single value per
         # observation
-        probs = model.predict_proba(X)[:, 1]
+        probs = model.predict_proba(X)[:, -1]
 
         pred = np.zeros(probs.shape, dtype=int)
         idx = np.argsort(probs)[threshold_idx:]

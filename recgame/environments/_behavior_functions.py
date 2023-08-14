@@ -116,8 +116,8 @@ class ContinuousFlexible(BaseBehavior):
     def _counterfactual_continuous_vectors(
         self, factuals, counterfactuals, effort_rate, rng, model
     ):
-        curr_scores = model.predict_proba(factuals)[:, 1]
-        cf_scores = model.predict_proba(counterfactuals)[:, 1]
+        curr_scores = model.predict_proba(factuals)[:, -1]
+        cf_scores = model.predict_proba(counterfactuals)[:, -1]
 
         # EXPERIMENTAL: RESCALE SCORES TO [0.1, 0.9]
         curr_scores = curr_scores * 0.8 + 0.1
@@ -170,7 +170,7 @@ class ContinuousFlexible(BaseBehavior):
         threshold = self.environment.threshold_
 
         # Effort rate are the standard deviations for each agent's gaussian
-        scores = model.predict_proba(X)[:, 1]
+        scores = model.predict_proba(X)[:, -1]
         x = threshold - scores
         effort_rate = global_adaptation / (10 * np.exp(5 * x))
 

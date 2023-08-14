@@ -27,10 +27,12 @@ class NFeatureRecourse(BaseRecourse):
         )
 
         if categorical is not None and categorical != []:
-            raise TypeError(
-                "NFeatureRecourse does not work with categorical features. Consider "
-                "using a different recourse method."
-            )
+            if categorical != immutable:
+                raise TypeError(
+                    "NFeatureRecourse does not work with categorical features. Consider "
+                    "using a different recourse method or set the categorical features "
+                    "as immutable."
+                )
 
         self.n_features = n_features
 
