@@ -118,7 +118,7 @@ class BankLoanApplication2(BaseEnvironment):
     Bank Loan Application Environment 2:
     - Uniformly generated data across the different features;
     - Absolute threshold;
-    - Binary_fixed adaptation;
+    - Binary adaptation;
     - Absolute growth rate;
 
     ``n_loans`` is the number of loans granted per time step
@@ -130,7 +130,7 @@ class BankLoanApplication2(BaseEnvironment):
         population,
         recourse,
         n_loans=10,
-        adaptation=20,
+        adaptation=0.2,
         new_agents=10,
         random_state=None,
     ):
@@ -140,7 +140,7 @@ class BankLoanApplication2(BaseEnvironment):
             threshold=n_loans,
             threshold_type="absolute",
             adaptation=adaptation,
-            adaptation_type="binary_fixed",
+            adaptation_type="binary",
             growth_rate=new_agents,
             growth_rate_type="absolute",
             remove_winners=True,
