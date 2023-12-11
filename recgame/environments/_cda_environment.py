@@ -11,11 +11,16 @@ class ModelRetrainEnvironment(BaseEnvironment):
     """
 
     def _simulate(self):
+        # Simulation runs as is
+        super()._simulate()
+
         # Model is updated using the new data
         self.model_ = clone(self.model_).fit(self.X_, self.outcome_)
 
-        # The rest of the simulation runs as is
-        return super()._simulate()
+        # Overwrite threshold
+        self.threshold_ = self.get_score_threshold()
+
+        return self
 
 
 class CDAEnvironment(BaseEnvironment):
